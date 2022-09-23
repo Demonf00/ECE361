@@ -10,10 +10,10 @@ int main(int argc, char* argv[])
 {
     if (argc != 2)
     {
-        fprintf(stderr, "Missing port number or too many arguments!\nThe correct usage should be: server port\n");
+        fprintf(stderr, "Missing or too many arguments!\nThe correct usage should be: server port\n");
 	    exit(1);
     }
-    char IP[] = "192.168.91.128";
+
     int port = atoi(argv[1]);
     int client_socketfd;
     struct sockaddr_in remote_address;
@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
     memset(&remote_address,0,sizeof(remote_address));
 
     remote_address.sin_family = AF_INET;//ip conversation channel
-    remote_address.sin_addr.s_addr = inet_addr(IP);
+    remote_address.sin_addr.s_addr = INADDR_ANY;
     remote_address.sin_port = htons(port);
 
     printf("Set!\n");
