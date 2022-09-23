@@ -8,6 +8,11 @@
 
 int main(int argc, char* argv[])
 {
-    printf("hello  world\n");
+    if (argc != 3)
+    {
+        fprintf(stderr, "Missing or too many arguments!\nThe correct usage should be: deliver address port\n");
+	    exit(1);
+    }
+    printf("hello world\n");
     return 0;
 }
