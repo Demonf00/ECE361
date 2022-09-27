@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
     }
 
     int port = atoi(argv[2]);
+
     // printf("%d\n", port);
     int sockfd; 
     char buffer[BUFSIZ]; 
@@ -35,7 +36,7 @@ int main(int argc, char *argv[]) {
     // Filling server information 
     servaddr.sin_family = AF_INET; 
     servaddr.sin_port = htons(port); 
-    servaddr.sin_addr.s_addr = INADDR_ANY; 
+    servaddr.sin_addr.s_addr = inet_addr(argv[1]); 
         
     int n, len; 
         
