@@ -1,13 +1,16 @@
-#include<sys/types.h>//structure
-#include<sys/socket.h>
-#include<stdio.h>
-#include<netinet/in.h>//adress
-#include<arpa/inet.h>//format convert
-#include<stdlib.h>
-#include<string.h>
 
-int main(int argc, char* argv[])
-{
+// Server side implementation of UDP client-server model 
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <unistd.h> 
+#include <string.h> 
+#include <sys/types.h> 
+#include <sys/socket.h> 
+#include <arpa/inet.h> 
+#include <netinet/in.h> 
+    
+// Driver code 
+int main(int argc, char *argv[]) {
     if (argc != 2)
     {
         fprintf(stderr, "Missing or too many arguments!\nThe correct usage should be: server port\n");
@@ -15,32 +18,47 @@ int main(int argc, char* argv[])
     }
 
     int port = atoi(argv[1]);
-    int client_socketfd;
-    struct sockaddr_in remote_address;
-    char buf[BUFSIZ];
-    memset(&remote_address,0,sizeof(remote_address));
-
-    remote_address.sin_family = AF_INET;//ip conversation channel
-    remote_address.sin_addr.s_addr = INADDR_ANY;
-    remote_address.sin_port = htons(port);
-
-    printf("Set!\n");
-    if((client_socketfd = socket(AF_INET, SOCK_STREAM,0)) < 0)
-    {
-        fprintf(stderr, "Socket error!\n");
+    // printf("%d\n", port);
+    int sockfd; 
+    char buffer[BUFSIZ]; 
+    char *hello = "Hello from server"; 
+    struct sockaddr_in servaddr, cliaddr; 
+        
+    // Creating socket file descriptor 
+    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
+        fprintf(stderr, "Socket creation failed!\n");
 	    exit(1);
-    }
-
-    printf("Set!\n");
-    if(connect(client_socketfd, (struct sockaddr*)&remote_address, sizeof(struct sockaddr)) < 0)
-    {
-        fprintf(stderr, "Connected error!\n");
+    } 
+        
+    memset(&servaddr, 0, sizeof(servaddr)); 
+    memset(&cliaddr, 0, sizeof(cliaddr)); 
+        
+    // Filling server information 
+    servaddr.sin_family    = AF_INET; // IPv4 
+    servaddr.sin_addr.s_addr = INADDR_ANY; 
+    servaddr.sin_port = htons(port); 
+        
+    // Bind the socket with the server address 
+    if ( bind(sockfd, (const struct sockaddr *)&servaddr,  
+            sizeof(servaddr)) < 0 ) 
+    { 
+        fprintf(stderr, "Bind failed!\n");
 	    exit(1);
-    }
-
-    printf("Set!\n");
-    int len = recv(client_socketfd, buf, BUFSIZ, 0);
-    buf[len] = '\0';
-    printf("Port %d is open with protocol %s\n", port, buf);
-    return 0;
+    } 
+        
+    int len, n; 
+    
+    len = sizeof(cliaddr);  //len is value/result 
+    
+    n = recvfrom(sockfd, (char *)buffer, BUFSIZ,  
+                MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
+                &len); 
+    buffer[n] = '\0'; 
+    printf("Client : %s\n", buffer); 
+    sendto(sockfd, (const char *)hello, strlen(hello),  
+        MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+            len); 
+    printf("Hello message sent.\n");  
+        
+    return 0; 
 }

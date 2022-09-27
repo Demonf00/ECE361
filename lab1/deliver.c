@@ -1,46 +1,55 @@
-#include<sys/types.h>//structure
-#include<sys/socket.h>
-#include<stdio.h>
-#include<netinet/in.h>//adress
-#include<arpa/inet.h>//format convert
-#include<stdlib.h>
-#include<string.h>
-
-int main(int argc, char* argv[])
-{
+// Client side implementation of UDP client-server model 
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <unistd.h> 
+#include <string.h> 
+#include <sys/types.h> 
+#include <sys/socket.h> 
+#include <arpa/inet.h> 
+#include <netinet/in.h> 
+    
+    
+// Driver code 
+int main(int argc, char *argv[]) {
     if (argc != 3)
     {
         fprintf(stderr, "Missing or too many arguments!\nThe correct usage should be: deliver address port\n");
 	    exit(1);
     }
 
-    int port = atoi(argv[1]);
-    int client_socketfd;
-    struct sockaddr_in remote_address;
-    char buf[BUFSIZ];
-    memset(&remote_address,0,sizeof(remote_address));
-
-    remote_address.sin_family = AF_INET;//ip conversation channel
-    remote_address.sin_addr.s_addr = inet_addr(argv[1]);
-    remote_address.sin_port = htons(port);
-
-    printf("Set!\n");
-    if((client_socketfd = socket(AF_INET, SOCK_STREAM,0)) < 0)
-    {
+    int port = atoi(argv[2]);
+    // printf("%d\n", port);
+    int sockfd; 
+    char buffer[BUFSIZ]; 
+    char *hello = "Hello from client"; 
+    struct sockaddr_in     servaddr; 
+    
+    // Creating socket file descriptor 
+    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
         fprintf(stderr, "Socket error!\n");
 	    exit(1);
-    }
-
-    printf("Set!\n");
-    if(connect(client_socketfd, (struct sockaddr*)&remote_address, sizeof(struct sockaddr)) < 0)
-    {
-        fprintf(stderr, "Connected error!\n");
-	    exit(1);
-    }
-
-    printf("Set!\n");
-    int len = recv(client_socketfd, buf, BUFSIZ, 0);
-    buf[len] = '\0';
-    printf("Port %d is open with protocol %s\n", port, buf);
-    return 0;
+    } 
+    
+    memset(&servaddr, 0, sizeof(servaddr)); 
+        
+    // Filling server information 
+    servaddr.sin_family = AF_INET; 
+    servaddr.sin_port = htons(port); 
+    servaddr.sin_addr.s_addr = INADDR_ANY; 
+        
+    int n, len; 
+        
+    sendto(sockfd, (const char *)hello, strlen(hello), 
+        MSG_CONFIRM, (const struct sockaddr *) &servaddr,  
+            sizeof(servaddr)); 
+    printf("Hello message sent.\n"); 
+            
+    n = recvfrom(sockfd, (char *)buffer, BUFSIZ,  
+                MSG_WAITALL, (struct sockaddr *) &servaddr, 
+                &len); 
+    buffer[n] = '\0'; 
+    printf("Server : %s\n", buffer); 
+    
+    close(sockfd); 
+    return 0; 
 }
