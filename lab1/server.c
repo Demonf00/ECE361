@@ -18,10 +18,12 @@ int main(int argc, char *argv[]) {
     }
 
     int port = atoi(argv[1]);
+    char *ftp = "ftp";
+    char *yes = "yes";
+    char *no = "no";
     // printf("%d\n", port);
     int sockfd; 
     char buffer[BUFSIZ]; 
-    char *hello = "Hello from server"; 
     struct sockaddr_in servaddr, cliaddr; 
         
     // Creating socket file descriptor 
@@ -54,11 +56,17 @@ int main(int argc, char *argv[]) {
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
                 &len); 
     buffer[n] = '\0'; 
-    printf("Client : %s\n", buffer); 
-    sendto(sockfd, (const char *)hello, strlen(hello),  
+    // printf("Client : %s\n", buffer); 
+    if (strcmp(buffer, ftp) != 0)
+        sendto(sockfd, (const char *)yes, strlen(yes),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
             len); 
-    printf("Hello message sent.\n");  
+
+    else
+        sendto(sockfd, (const char *)yes, strlen(yes),  
+        MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+            len); 
+    // printf("Hello message sent.\n");  
         
     return 0; 
 }
