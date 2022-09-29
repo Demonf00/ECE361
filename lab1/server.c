@@ -52,21 +52,29 @@ int main(int argc, char *argv[]) {
     
     len = sizeof(cliaddr);  //len is value/result 
     
+    printf("Server: Start listening to port %d ...\n", port);
     n = recvfrom(sockfd, (char *)buffer, BUFSIZ,  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
                 &len); 
     buffer[n] = '\0'; 
-    // printf("Client : %s\n", buffer); 
+    printf("Server: Received message from %d : %s\n", cliaddr.sin_addr.s_addr, buffer); 
+
     if (strcmp(buffer, ftp) != 0)
-        sendto(sockfd, (const char *)yes, strlen(yes),  
+    {
+        sendto(sockfd, (const char *)no, strlen(no),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-            len); 
+            len);
+        printf("Server: %s message sent.\n", no);
+    } 
 
     else
+    {
         sendto(sockfd, (const char *)yes, strlen(yes),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-            len); 
-    // printf("Hello message sent.\n");  
+            len);
+        printf("Server: %s message sent.\n", yes);
+    } 
+      
         
     return 0; 
 }

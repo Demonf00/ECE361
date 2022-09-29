@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         
     int n, len; 
     
-    printf("Please input a message as follows: ftp <file name>\n");
+    printf("Client: Please input a message as follows: ftp <file name>\n");
     scanf("%s", command);
     scanf("%s", filepath);
  
@@ -64,14 +64,16 @@ int main(int argc, char *argv[]) {
     sendto(sockfd, (const char *)ftp, strlen(ftp), 
         MSG_CONFIRM, (const struct sockaddr *) &servaddr,  
             sizeof(servaddr)); 
-    // printf("Hello message sent.\n");
+    printf("Client: %s %s message sent to %s:%d.\n", command, filepath, argv[1], port);
             
     n = recvfrom(sockfd, (char *)buffer, BUFSIZ,  
                 MSG_WAITALL, (struct sockaddr *) &servaddr, 
-                &len); 
+                &len);
+
+    printf("Client: Received message from server %s:%d %s\n", argv[1], port, buffer); 
     buffer[n] = '\0';
     if (strcmp(buffer, yes) == 0) 
-        printf("A file transfer can start\n");
+        printf("Client: A file transfer can start\n");
 
     else{
         fprintf(stderr, "Please try again!\n");
