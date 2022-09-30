@@ -3,7 +3,8 @@
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <unistd.h> 
-#include <string.h> 
+#include <string.h>
+#include <fcntl.h> 
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
                 &len); 
     buffer[n] = '\0'; 
-    printf("Server: Received message from %d : %s\n", cliaddr.sin_addr.s_addr, buffer); 
+    printf("Server: Received message from %s: %s\n", inet_ntoa(cliaddr.sin_addr), buffer); 
 
     if (strcmp(buffer, ftp) != 0)
     {
