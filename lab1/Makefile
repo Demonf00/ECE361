@@ -1,6 +1,6 @@
 CC=gcc
-all: server deliver
+all:server deliver
 server: server.o
-deliver: deliver.o
+deliever:deliver.o
 clean:
 	rm -f *.o server deliver
