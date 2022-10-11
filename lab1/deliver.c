@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <time.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -44,14 +45,14 @@ int main(int argc, char *argv[]){
     fgets(client_message,2000,stdin);
     int change = strlen(client_message);
     client_message[change - 1] = '\0';
-    printf("%s\n", client_message);
+    // printf("%s\n", client_message);
     // gets(client_message);
     
     // check input format and if file exist
     char *message = strtok(client_message, " ");
     if(strcmp(message,"ftp")==0 ){
         message = strtok(NULL, " ");
-        if(access(message, F_OK)!=0){
+        if(open(message,O_RDONLY) < 0){
             printf("file not exist. \n");
             continue; 
         }            
