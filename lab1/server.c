@@ -7,6 +7,8 @@
 #include <fcntl.h> 
 #include <sys/types.h> 
 #include <sys/socket.h> 
+#include <sys/time.h>
+#include <time.h>
 #include <arpa/inet.h> 
 #include <netinet/in.h> 
     
@@ -25,7 +27,8 @@ int main(int argc, char *argv[]) {
     // printf("%d\n", port);
     int sockfd; 
     char buffer[BUFSIZ]; 
-    struct sockaddr_in servaddr, cliaddr; 
+    struct sockaddr_in servaddr, cliaddr;
+    time_t end_time; 
         
     // Creating socket file descriptor 
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
@@ -51,12 +54,18 @@ int main(int argc, char *argv[]) {
         
     int len, n; 
     
+    
+
     len = sizeof(cliaddr);  //len is value/result 
     
     printf("Server: Start listening to port %d ...\n", port);
     n = recvfrom(sockfd, (char *)buffer, BUFSIZ,  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
-                &len); 
+                &len);
+    
+    end_time = time(&end_time);
+    // printf("%d\n", start_time);
+
     buffer[n] = '\0'; 
     printf("Server: Received message from %s: %s\n", inet_ntoa(cliaddr.sin_addr), buffer); 
 
@@ -74,8 +83,15 @@ int main(int argc, char *argv[]) {
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
             len);
         printf("Server: %s message sent.\n", yes);
-    } 
-      
+    }
+    
+
+
+    sendto(sockfd, (const time_t *)&end_time, sizeof(end_time),  
+        MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+            len);
+    
+    printf("Server: %d time sent.\n", end_time);  
         
     return 0; 
 }

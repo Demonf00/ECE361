@@ -1,14 +1,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]){
     int socket_desc;
     struct sockaddr_in server_addr;
     char server_message[2000], client_message[2000];
     int server_struct_length = sizeof(server_addr);
+    time_t start_time, end_time, diff_time;
     
     // deliever ip_address port
     if (argc != 3) {
@@ -37,7 +41,11 @@ int main(int argc, char *argv[]){
         
     // Get input from the user:
     printf("Enter 'ftp <file name>' ");
-    gets(client_message);
+    fgets(client_message,2000,stdin);
+    int change = strlen(client_message);
+    client_message[change - 1] = '\0';
+    printf("%s\n", client_message);
+    // gets(client_message);
     
     // check input format and if file exist
     char *message = strtok(client_message, " ");
@@ -53,7 +61,7 @@ int main(int argc, char *argv[]){
         continue;
     }
         
-    
+    start_time = time(&start_time);
     // Send the message to server:
     if(sendto(socket_desc, "ftp", strlen("ftp"), 0,
          (struct sockaddr*)&server_addr, server_struct_length) < 0){
@@ -68,7 +76,14 @@ int main(int argc, char *argv[]){
         printf("A file transfer can start\n");
     else
         break;
+
+    recvfrom(socket_desc, (time_t *)&end_time, sizeof(end_time), 0,(struct sockaddr*)&server_addr, &server_struct_length);
+    printf("%d\n", end_time);
+    diff_time = difftime(end_time, start_time);
+    printf("Use %d time from client to server\n", diff_time);
     }
+
+    
 
 }
 
