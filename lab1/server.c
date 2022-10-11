@@ -1,16 +1,7 @@
 
 // Server side implementation of UDP client-server model 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <unistd.h> 
-#include <string.h>
-#include <fcntl.h> 
-#include <sys/types.h> 
-#include <sys/socket.h> 
-#include <sys/time.h>
-#include <time.h>
-#include <arpa/inet.h> 
-#include <netinet/in.h> 
+
+#include "udp.h" 
     
 // Driver code 
 int main(int argc, char *argv[]) {
@@ -28,7 +19,8 @@ int main(int argc, char *argv[]) {
     int sockfd; 
     char buffer[BUFSIZ]; 
     struct sockaddr_in servaddr, cliaddr;
-    struct timeval end_time; 
+    struct timeval end_time;
+    struct packet recvpacket; 
         
     // Creating socket file descriptor 
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
@@ -91,7 +83,27 @@ int main(int argc, char *argv[]) {
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
             len);
     
-    printf("Server: end time sent.\n");  
+    printf("Server: end time sent.\n");
+
+    recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
+                MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
+                &len);
+
+    creat(recvpacket.filename, S_IRWXU);
+    int write_to_file = open(recvpacket.filename, O_WRONLY);
+    write(write_to_file, recvpacket.filedata, recvpacket.size);
+    printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
+
+    while(recvpacket.frag_no != recvpacket.total_frag)
+    {
+        recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
+                MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
+                &len);
+        write(write_to_file, recvpacket.filedata, recvpacket.size);
+        printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
+    }
         
+    printf("Server: finished transfer the file %s\n", recvpacket.filename);
+
     return 0; 
 }

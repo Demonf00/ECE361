@@ -1,12 +1,4 @@
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <time.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <stdlib.h>
+#include "udp.h"
 
 int main(int argc, char *argv[]){
     int socket_desc;
@@ -84,6 +76,10 @@ int main(int argc, char *argv[]){
     diff_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
     // diff_time = end_time - start_time;
     printf("Use %lfs from client to server\n", diff_time);
+
+
+    
+
     }
 
     
