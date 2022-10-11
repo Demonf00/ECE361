@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     int sockfd; 
     char buffer[BUFSIZ]; 
     struct sockaddr_in servaddr, cliaddr;
-    time_t end_time; 
+    struct timeval end_time; 
         
     // Creating socket file descriptor 
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
                 &len);
     
-    end_time = time(&end_time);
+    gettimeofday(&end_time, NULL);
     // printf("%d\n", start_time);
 
     buffer[n] = '\0'; 
@@ -87,11 +87,11 @@ int main(int argc, char *argv[]) {
     
 
 
-    sendto(sockfd, (const time_t *)&end_time, sizeof(end_time),  
+    sendto(sockfd, (const struct timeval *)&end_time, sizeof(end_time),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
             len);
     
-    printf("Server: %d time sent.\n", end_time);  
+    printf("Server: end time sent.\n");  
         
     return 0; 
 }

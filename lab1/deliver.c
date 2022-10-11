@@ -13,7 +13,8 @@ int main(int argc, char *argv[]){
     struct sockaddr_in server_addr;
     char server_message[2000], client_message[2000];
     int server_struct_length = sizeof(server_addr);
-    time_t start_time, end_time, diff_time;
+    struct timeval start_time, end_time;
+    double diff_time;
     
     // deliever ip_address port
     if (argc != 3) {
@@ -62,7 +63,7 @@ int main(int argc, char *argv[]){
         continue;
     }
         
-    start_time = time(&start_time);
+    gettimeofday(&start_time, NULL);
     // Send the message to server:
     if(sendto(socket_desc, "ftp", strlen("ftp"), 0,
          (struct sockaddr*)&server_addr, server_struct_length) < 0){
@@ -78,10 +79,11 @@ int main(int argc, char *argv[]){
     else
         break;
 
-    recvfrom(socket_desc, (time_t *)&end_time, sizeof(end_time), 0,(struct sockaddr*)&server_addr, &server_struct_length);
-    printf("%d\n", end_time);
-    diff_time = difftime(end_time, start_time);
-    printf("Use %d time from client to server\n", diff_time);
+    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 0,(struct sockaddr*)&server_addr, &server_struct_length);
+    // printf("Received time from server: %6.6f\n", end_time);
+    diff_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
+    // diff_time = end_time - start_time;
+    printf("Use %lfs from client to server\n", diff_time);
     }
 
     
