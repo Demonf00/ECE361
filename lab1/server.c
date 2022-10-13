@@ -100,6 +100,9 @@ int main(int argc, char *argv[]) {
     
     while(recvpacket.frag_no != recvpacket.total_frag)
     {
+        // sendto(sockfd, (const char *)yes, strlen(yes),  
+        // MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+        //     len);
         recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
                 &len);

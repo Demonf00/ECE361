@@ -13,6 +13,7 @@
 #include <math.h>
 #include <arpa/inet.h> 
 #include <netinet/in.h>
+#define MIN(i, j) (((i) < (j)) ? (i) : (j))
 
 struct packet {
     unsigned int total_frag;
