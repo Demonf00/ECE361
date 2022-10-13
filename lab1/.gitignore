@@ -1,6 +1,7 @@
 server
 deliver
 test_of_lab2
+test.file
 
 *.o
 test
