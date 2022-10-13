@@ -102,7 +102,9 @@ int main(int argc, char *argv[]) {
         write(write_to_file, recvpacket.filedata, recvpacket.size);
         printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
     }
-        
+
+    close(write_to_file);
+    // printf("pk\n");
     printf("Server: finished transfer the file %s\n", recvpacket.filename);
 
     return 0; 
