@@ -18,6 +18,6 @@ struct packet {
     unsigned int total_frag;
     unsigned int frag_no;
     unsigned int size;
-    char* filename;
+    char filename[1000];
     char filedata[1000];
 };

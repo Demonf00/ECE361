@@ -1,5 +1,4 @@
 #include "udp.h"
-#include <math.h>
 
 int main(int argc, char *argv[]){
     int socket_desc;
@@ -35,6 +34,7 @@ int main(int argc, char *argv[]){
     memset(client_message, '\0', sizeof(client_message));    
     
     // Test if can send the message to server:
+    gettimeofday(&start_time, NULL);
     if(sendto(socket_desc, "ftp", strlen("ftp"), 0,
          (struct sockaddr*)&server_addr, server_struct_length) < 0){
         printf("Unable to send message\n");
@@ -71,6 +71,13 @@ int main(int argc, char *argv[]){
         continue;
     }
     
+    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
+            0,(struct sockaddr*)&server_addr, &server_struct_length);
+    // printf("Received time from server: %6.6f\n", end_time);
+    diff_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
+    // diff_time = end_time - start_time;
+    printf("Use %lfs from client to server\n", diff_time);
+
     // Check total frag needed
     FILE * file = fopen(message,"r");
     fseek(file, 0 , SEEK_END);
@@ -80,12 +87,13 @@ int main(int argc, char *argv[]){
     int frag_no = 1;
 
         
-    gettimeofday(&start_time, NULL);
+    
     
     // Send file to server
     struct packet file_frag;
     file_frag.total_frag = total_frag;
-    file_frag.filename = message;
+    strcpy(file_frag.filename, message);
+    // file_frag.filename = message;
     
         
     while(fread(&data, sizeof(char), 1000,file) > 0){
@@ -109,18 +117,14 @@ int main(int argc, char *argv[]){
         
     
     printf("file sent to server\n");
-    // Receive the server's response:
-    recvfrom(socket_desc, server_message, sizeof(server_message), 
-            0,(struct sockaddr*)&server_addr, &server_struct_length);
+    break;
+    // // Receive the server's response:
+    // recvfrom(socket_desc, server_message, sizeof(server_message), 
+    //         0,(struct sockaddr*)&server_addr, &server_struct_length);
     
 
-    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
-            0,(struct sockaddr*)&server_addr, &server_struct_length);
-    // printf("Received time from server: %6.6f\n", end_time);
-    diff_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
-    // diff_time = end_time - start_time;
-    printf("Use %lfs from client to server\n", diff_time);
-    
+
+
   
 
     }

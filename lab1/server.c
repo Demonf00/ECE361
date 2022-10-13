@@ -104,7 +104,8 @@ int main(int argc, char *argv[]) {
     }
 
     close(write_to_file);
-    // printf("pk\n");
+    printf("hello\n");
+    // printf("%d\n", strlen(recvpacket.filename));
     printf("Server: finished transfer the file %s\n", recvpacket.filename);
 
     return 0; 
