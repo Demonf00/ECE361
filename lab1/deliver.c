@@ -107,10 +107,16 @@ int main(int argc, char *argv[]){
             continue;
         }
         printf("packet %d of %d sent\n", file_frag.frag_no,file_frag.total_frag);
-        printf("packet contains: \n%s \n", file_frag.filedata);
+//        printf("packet contains: \n%s \n", file_frag.filedata);
         
         bzero(data,1000); // clear buffer
         bzero(file_frag.filedata,1000);
+        
+        do{
+            bzero(server_message,2000);
+            recvfrom(socket_desc, server_message, sizeof(server_message), 
+                0,(struct sockaddr*)&server_addr, &server_struct_length);
+        }while(strcmp(server_message,"yes")!=0);
                 
         frag_no++;
     }    
