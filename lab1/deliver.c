@@ -40,9 +40,19 @@ int main(int argc, char *argv[]){
         printf("Unable to send message\n");
         return -1;
     }
+
     
     recvfrom(socket_desc, server_message, sizeof(server_message), 
             0,(struct sockaddr*)&server_addr, &server_struct_length);
+
+    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
+            0,(struct sockaddr*)&server_addr, &server_struct_length);
+    // printf("Received time from server: %6.6f\n", end_time);
+
+    gettimeofday(&end_time, NULL); //Use time on deliver side for roundtrip time
+    diff_time = (double)2*(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
+    // diff_time = end_time - start_time;
+    printf("Use %lfs from client to server\n", diff_time);
 
     
     if(strcmp(server_message,"yes")==0)
@@ -71,13 +81,7 @@ int main(int argc, char *argv[]){
         continue;
     }
     
-    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
-            0,(struct sockaddr*)&server_addr, &server_struct_length);
-    // printf("Received time from server: %6.6f\n", end_time);
-    diff_time = (double)(end_time.tv_usec - start_time.tv_usec) / 1000000 + (double)(end_time.tv_sec - start_time.tv_sec);
-    // diff_time = end_time - start_time;
-    printf("Use %lfs from client to server\n", diff_time);
-
+    
     // Check total frag needed
     FILE * file = fopen(message,"r");
     fseek(file, 0 , SEEK_END);
@@ -123,11 +127,11 @@ int main(int argc, char *argv[]){
         recvfrom(socket_desc, server_message, sizeof(server_message), 
                 0,(struct sockaddr*)&server_addr, &server_struct_length);
 
-        // do{
-        //     bzero(server_message,2000);
-        //     recvfrom(socket_desc, server_message, sizeof(server_message), 
-        //         0,(struct sockaddr*)&server_addr, &server_struct_length);
-        // }while(strcmp(server_message,"yes")!=0);
+//         do{
+//             bzero(server_message,2000);
+//             recvfrom(socket_desc, server_message, sizeof(server_message), 
+//                 0,(struct sockaddr*)&server_addr, &server_struct_length);
+//         }while(strcmp(server_message,"yes")!=0);
                 
         frag_no++;
     }    
