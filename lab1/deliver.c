@@ -31,7 +31,15 @@ int main(int argc, char *argv[]){
     while(1){
     // Clean buffers:
     memset(server_message, '\0', sizeof(server_message));
-    memset(client_message, '\0', sizeof(client_message));    
+    memset(client_message, '\0', sizeof(client_message)); 
+
+    //set timeout for socket
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000; //avg 480ms for roundtime
+    if (setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO,&timeout,sizeof(timeout)) < 0) {
+        perror("Error");
+    }
     
     // Test if can send the message to server:
     gettimeofday(&start_time, NULL);
@@ -42,11 +50,15 @@ int main(int argc, char *argv[]){
     }
 
     
-    recvfrom(socket_desc, server_message, sizeof(server_message), 
-            0,(struct sockaddr*)&server_addr, &server_struct_length);
+    if(recvfrom(socket_desc, server_message, sizeof(server_message), 
+            0,(struct sockaddr*)&server_addr, &server_struct_length)<0){
+                printf("time out\n");
+                return -1;
+            }
+    printf("reveived from server: %s \n", server_message);
 
-    recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
-            0,(struct sockaddr*)&server_addr, &server_struct_length);
+    // recvfrom(socket_desc, (struct timeval *)&end_time, sizeof(end_time), 
+    //         0,(struct sockaddr*)&server_addr, &server_struct_length);
     // printf("Received time from server: %6.6f\n", end_time);
 
     gettimeofday(&end_time, NULL); //Use time on deliver side for roundtrip time
@@ -99,11 +111,16 @@ int main(int argc, char *argv[]){
     struct packet file_frag;
     file_frag.total_frag = total_frag;
     strcpy(file_frag.filename, message);
-    // file_frag.filename = message;
     
+    bool resent = false;
+    int eof = fread(&data, sizeof(char), 1000,file);
         
-    while(fread(&data, sizeof(char), 1000,file) > 0){
-        
+    while(eof>0){
+        if(resent){
+            eof = fread(&data, sizeof(char), 1000,file);
+            if (eof<=0)
+                break;
+        }
         printf("%s\n", data);
         file_frag.frag_no = frag_no;
         file_frag.size = strlen(data);
@@ -123,16 +140,15 @@ int main(int argc, char *argv[]){
         
         bzero(data,1000); // clear buffer
         bzero(file_frag.filedata,1000);
-        
-        recvfrom(socket_desc, server_message, sizeof(server_message), 
-                0,(struct sockaddr*)&server_addr, &server_struct_length);
 
-//         do{
-//             bzero(server_message,2000);
-//             recvfrom(socket_desc, server_message, sizeof(server_message), 
-//                 0,(struct sockaddr*)&server_addr, &server_struct_length);
-//         }while(strcmp(server_message,"yes")!=0);
-                
+        
+        if(recvfrom(socket_desc, server_message, sizeof(server_message), 
+                0,(struct sockaddr*)&server_addr, &server_struct_length)<0){
+                    printf("timeout, resent package %d of %d  \n", file_frag.frag_no,file_frag.total_frag);
+                    resent = false; //won't read file if resent
+                    continue;
+                }
+        resent = true;        
         frag_no++;
     }    
         
@@ -142,11 +158,6 @@ int main(int argc, char *argv[]){
     // // Receive the server's response:
     // recvfrom(socket_desc, server_message, sizeof(server_message), 
     //         0,(struct sockaddr*)&server_addr, &server_struct_length);
-    
-
-
-
-  
 
     }
 

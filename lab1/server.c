@@ -79,11 +79,11 @@ int main(int argc, char *argv[]) {
     
 
 
-    sendto(sockfd, (const struct timeval *)&end_time, sizeof(end_time),  
-        MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-            len);
+    // sendto(sockfd, (const struct timeval *)&end_time, sizeof(end_time),  
+    //     MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+    //         len);
     
-    printf("Server: end time sent.\n");
+    // printf("Server: end time sent.\n");
 
     recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
@@ -97,7 +97,9 @@ int main(int argc, char *argv[]) {
     sendto(sockfd, (const char *)yes, strlen(yes),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
             len);
-    
+
+    //simulate loss
+    int if_drop = 0;
     while(recvpacket.frag_no != recvpacket.total_frag)
     {
         // sendto(sockfd, (const char *)yes, strlen(yes),  
@@ -108,9 +110,13 @@ int main(int argc, char *argv[]) {
                 &len);
         write(write_to_file, recvpacket.filedata, recvpacket.size);
         
-        sendto(sockfd, (const char *)yes, strlen(yes),  
-        MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-            len);
+        if(if_drop%47!=0){
+            sendto(sockfd, (const char *)yes, strlen(yes),  
+            MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+                len);
+            
+        }
+        if_drop++;
         
         printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
     }
