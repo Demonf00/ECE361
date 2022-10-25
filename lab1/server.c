@@ -132,6 +132,7 @@ int main(int argc, char *argv[]) {
                     len);
             continue;
         }
+        previous = recvpacket.frag_no;
         write(write_to_file, recvpacket.filedata, recvpacket.size);
         
         if(if_drop%47!=0){
