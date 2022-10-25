@@ -37,6 +37,8 @@ int main(int argc, char *argv[]){
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 1000; //avg 480ms for roundtime
+    // level = only set timeout for socket_desc
+    // option_name = SO_RCVTIMEO : set timeout value output function blocks due flow control
     if (setsockopt(socket_desc, SOL_SOCKET, SO_RCVTIMEO,&timeout,sizeof(timeout)) < 0) {
         perror("Error");
     }
@@ -112,15 +114,10 @@ int main(int argc, char *argv[]){
     file_frag.total_frag = total_frag;
     strcpy(file_frag.filename, message);
     
-    bool resent = false;
+    bool resent = true;
     int eof = fread(&data, sizeof(char), 1000,file);
         
     while(eof>0){
-        if(resent){
-            eof = fread(&data, sizeof(char), 1000,file);
-            if (eof<=0)
-                break;
-        }
         printf("%s\n", data);
         file_frag.frag_no = frag_no;
         file_frag.size = strlen(data);
@@ -145,11 +142,21 @@ int main(int argc, char *argv[]){
         if(recvfrom(socket_desc, server_message, sizeof(server_message), 
                 0,(struct sockaddr*)&server_addr, &server_struct_length)<0){
                     printf("timeout, resent package %d of %d  \n", file_frag.frag_no,file_frag.total_frag);
-                    resent = false; //won't read file if resent
+                    resent = true; //won't read file if resent
                     continue;
                 }
-        resent = true;        
+
+        if(strcmp(server_message,"yes")!=0){
+            printf("server didn't receive, resent package %d of %d  \n", file_frag.frag_no,file_frag.total_frag);
+            resent = true; //won't read file if resent
+            continue;
+        }
+        resent = false;        
         frag_no++;
+
+        if(!resent)
+            eof = fread(&data, sizeof(char), 1000,file);
+        
     }    
         
     
