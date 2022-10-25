@@ -20,7 +20,15 @@ int main(int argc, char *argv[]) {
     char buffer[BUFSIZ]; 
     struct sockaddr_in servaddr, cliaddr;
     struct timeval end_time;
-    struct packet recvpacket; 
+    struct packet recvpacket;
+
+    //set timeout for socket
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000; //avg 480ms for roundtime
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&timeout,sizeof(timeout)) < 0) {
+        perror("Error");
+    } 
         
     // Creating socket file descriptor 
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) { 
@@ -100,14 +108,30 @@ int main(int argc, char *argv[]) {
 
     //simulate loss
     int if_drop = 0;
+    int previous = -1;
     while(recvpacket.frag_no != recvpacket.total_frag)
     {
         // sendto(sockfd, (const char *)yes, strlen(yes),  
         // MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
         //     len);
-        recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
+        if (recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
-                &len);
+                &len)<0)
+            {
+                sendto(sockfd, (const char *)no, strlen(no),  
+                    MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+                    len);
+                continue;
+            }
+        if (previous = -1)
+            previous = recvpacket.frag_no;
+        else if (recvpacket.frag_no == previous)
+        {
+            sendto(sockfd, (const char *)yes, strlen(yes),  
+                    MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
+                    len);
+            continue;
+        }
         write(write_to_file, recvpacket.filedata, recvpacket.size);
         
         if(if_drop%47!=0){

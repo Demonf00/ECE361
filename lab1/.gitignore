@@ -2,6 +2,8 @@ server
 deliver
 test_of_lab2
 test.file
+intertry
 
 *.o
+intertry.c
 test

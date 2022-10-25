@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]){
     int socket_desc;
     struct sockaddr_in server_addr;
-    char server_message[2000], client_message[2000], data[1000];
+    char server_message[2000], client_message[2000];
     int server_struct_length = sizeof(server_addr);
     struct timeval start_time, end_time;
     double diff_time;
@@ -104,10 +104,7 @@ int main(int argc, char *argv[]){
     int total_frag = (int)ceil(filesize/1000);
     int frag_no = 1;
     int source_file = open(message, O_RDONLY);
-    int ret = 1000;
 
-        
-    
     
     // Send file to server
     struct packet file_frag;
@@ -115,16 +112,12 @@ int main(int argc, char *argv[]){
     strcpy(file_frag.filename, message);
     
     bool resent = true;
-    int eof = fread(&data, sizeof(char), 1000,file);
+    int eof = read(source_file, file_frag.filedata, 1000);
         
     while(eof>0){
-        printf("%s\n", data);
         file_frag.frag_no = frag_no;
-        file_frag.size = strlen(data);
-        memcpy(file_frag.filedata,data,1000);
         // printf("%s\n", file_frag.filedata);
-        ret = read(source_file, file_frag.filedata, MIN(1000,ret));
-        file_frag.size = MIN(1000,ret);
+        file_frag.size = eof;
         // printf("%d\n", strcmp(file_frag.filedata,data));
         
         if(sendto(socket_desc, (struct packet*)&file_frag, sizeof(file_frag), 0,
@@ -135,8 +128,7 @@ int main(int argc, char *argv[]){
         printf("packet %d of %d sent\n", file_frag.frag_no,file_frag.total_frag);
         // printf("packet contains: \n%s \n", file_frag.filedata);
         
-        bzero(data,1000); // clear buffer
-        bzero(file_frag.filedata,1000);
+        bzero(file_frag.filedata,1000); // clear buffer
 
         
         if(recvfrom(socket_desc, server_message, sizeof(server_message), 
@@ -155,7 +147,7 @@ int main(int argc, char *argv[]){
         frag_no++;
 
         if(!resent)
-            eof = fread(&data, sizeof(char), 1000,file);
+            eof = read(source_file, file_frag.filedata, 1000);
         
     }    
         
@@ -171,4 +163,3 @@ int main(int argc, char *argv[]){
     
 
 }
-
