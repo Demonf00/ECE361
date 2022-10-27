@@ -93,18 +93,18 @@ int main(int argc, char *argv[]) {
     
     // printf("Server: end time sent.\n");
 
-    recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
+    while(recvfrom(sockfd, (struct packet*)&recvpacket, sizeof(struct packet),  
                 MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
-                &len);
+                &len)<0);
 
     creat(recvpacket.filename, S_IRWXU);
     int write_to_file = open(recvpacket.filename, O_WRONLY);
     write(write_to_file, recvpacket.filedata, recvpacket.size);
     printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
     
-    sendto(sockfd, (const char *)yes, strlen(yes),  
+    while(sendto(sockfd, (const char *)yes, strlen(yes),  
         MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-            len);
+            len)<0);
 
     //simulate loss
     int if_drop = 0;
@@ -123,14 +123,12 @@ int main(int argc, char *argv[]) {
                     len);
                 continue;
             }
-        if (previous == -1)
-            previous = recvpacket.frag_no;
-        else if (recvpacket.frag_no == previous)
+        if (recvpacket.frag_no == previous)
         {
             printf("Server: recv packet from client %d of %d, already got it, dropped!\n", recvpacket.frag_no, recvpacket.total_frag);
-            sendto(sockfd, (const char *)yes, strlen(yes),  
+            while(sendto(sockfd, (const char *)yes, strlen(yes),  
                     MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-                    len);
+                    len)<0);
             continue;
         }
         previous = recvpacket.frag_no;
@@ -140,9 +138,9 @@ int main(int argc, char *argv[]) {
         printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
         if(if_drop%47!=0){
             printf("Server: ACK sent!\n");
-            sendto(sockfd, (const char *)yes, strlen(yes),  
+            while(sendto(sockfd, (const char *)yes, strlen(yes),  
             MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
-                len);
+                len)<0);
             
         }
         else printf("Server: Simulate: ACK dropped!\n");
