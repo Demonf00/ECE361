@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
                     len);
                 continue;
             }
-        if (previous = -1)
+        if (previous == -1)
             previous = recvpacket.frag_no;
         else if (recvpacket.frag_no == previous)
         {
