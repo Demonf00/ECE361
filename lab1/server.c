@@ -127,6 +127,7 @@ int main(int argc, char *argv[]) {
             previous = recvpacket.frag_no;
         else if (recvpacket.frag_no == previous)
         {
+            printf("Server: recv packet from client %d of %d, already got it, dropped!\n", recvpacket.frag_no, recvpacket.total_frag);
             sendto(sockfd, (const char *)yes, strlen(yes),  
                     MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
                     len);
@@ -135,15 +136,19 @@ int main(int argc, char *argv[]) {
         previous = recvpacket.frag_no;
         write(write_to_file, recvpacket.filedata, recvpacket.size);
         
+
+        printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
         if(if_drop%47!=0){
+            printf("Server: ACK sent!\n");
             sendto(sockfd, (const char *)yes, strlen(yes),  
             MSG_CONFIRM, (const struct sockaddr *) &cliaddr, 
                 len);
             
         }
+        else printf("Server: Simulate: ACK dropped!\n");
         if_drop++;
         
-        printf("Server: recv packet from client %d of %d\n", recvpacket.frag_no, recvpacket.total_frag);
+        
     }
 
     close(write_to_file);
