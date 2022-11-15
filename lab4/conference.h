@@ -15,8 +15,13 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #define MIN(i, j) (((i) < (j)) ? (i) : (j))
-#define MAX_NAME 100
+#define MAX_USER_NAME 100
+#define MAX_USER_PASSWORD 100
+#define MAX_MEETING_NAME 100
 #define MAX_DATA 2000
+#define MAX_USERS 100
+#define MAX_USERS_IN_A_MEETING 20
+#define MAX_MEETINGS 100
 
 typedef enum {
     LOGIN,//Login with the server
@@ -26,7 +31,7 @@ typedef enum {
     JOIN,//Join a conference session
     JN_ACK,//Acknowledge successful conference session join
     JN_NAK,//Negative acknowledgement of joining the session
-    LEAVE_SESE,//Leave a conference session
+    LEAVE_SESS,//Leave a conference session
     NEW_SESS,//Create new conference session
     NS_ACK,//Acknowledge new conference session
     MESSAGE,//Send a message to the session or display the message if it is received
@@ -37,6 +42,44 @@ typedef enum {
 struct message {
     Control type;
     unsigned int size;
-    unsigned char source[MAX_NAME];
+    unsigned char source[MAX_USER_NAME];
     unsigned char data[MAX_DATA];
 };
+
+typedef struct client {
+    char ID[MAX_USER_NAME];
+    in_addr_t address;
+    int port;
+    struct client* next;
+}Client;
+
+typedef struct session {
+    char meetingName[MAX_MEETING_NAME];
+    Client* clientlist;
+    int users;
+}Session;
+
+typedef struct clientData{
+    char name[MAX_USER_NAME];
+    char password[MAX_USER_PASSWORD];
+    int status;//0 for not log in, 1 for log in
+}ClientData;
+
+/*
+application layer and transfer layer.
+1. input the port check input
+2. check if the port is available, if not show the list and ask to input again, while
+3. create or open a database.
+4. wait for the client check name and password, if not, sent logerr
+5. create a client list based on the session name including their id, ip, port.
+6. when somebody leave, delete it from the specific list, if no one in this list, delete the list.
+7. 
+*/
+
+void init(void); //init everything
+void loadData(ClientData* database, char* sourcePath);//load data from the source database
+bool checkLog(ClientData* database, char* name, char* password);//check name and password
+int getSessionid(char* sessionName);//get session id
+bool joinSession(Client* client, Session session);//join in a session, if not exist, create one, if full, return false.
+void quitSession(Client* client, Session session);//quit from a session, if no one in it, delete it.
+void clear(void); //clear everything
