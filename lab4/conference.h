@@ -46,23 +46,29 @@ struct message {
     unsigned char data[MAX_DATA];
 };
 
-typedef struct client {
-    char ID[MAX_USER_NAME];
-    in_addr_t address;
-    int port;
-    struct client* next;
-}Client;
+typedef struct sessionId{
+    int id;
+    struct sessionId* next;
+}SessionId;
 
-typedef struct session {
+typedef struct clientId{
+    int id;
+    struct clientId* next;
+}ClientId;
+
+typedef struct session{
     char meetingName[MAX_MEETING_NAME];
-    Client* clientlist;
     int users;
+    ClientId* clientList;
 }Session;
 
 typedef struct clientData{
     char name[MAX_USER_NAME];
     char password[MAX_USER_PASSWORD];
+    in_addr_t address;
+    int port;
     int status;//0 for not log in, 1 for log in
+    SessionId* sessionList;
 }ClientData;
 
 /*
@@ -78,8 +84,9 @@ application layer and transfer layer.
 
 void init(void); //init everything
 void loadData(ClientData* database, char* sourcePath);//load data from the source database
-bool checkLog(ClientData* database, char* name, char* password);//check name and password
-int getSessionid(char* sessionName);//get session id
-bool joinSession(Client* client, Session session);//join in a session, if not exist, create one, if full, return false.
-void quitSession(Client* client, Session session);//quit from a session, if no one in it, delete it.
+bool checkLog(ClientData* database, char* name, char* password, int log);//if log == 1, log in, if log == 0, quit.
+int getSessionid(char* sessionName, Session* sessions);//get session id
+int getClientid(ClientData* database, const ClientData* client);//get client id
+bool joinSession(ClientData* database, int clientid, Session* session, int sessionid);//join in a session, if not exist, create one, if full, return false.
+bool quitSession(ClientData* database, int clientid, Session* session, int sessionid);//quit from a session, if no one in it, delete it.
 void clear(void); //clear everything
