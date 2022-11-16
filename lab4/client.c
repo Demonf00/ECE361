@@ -99,13 +99,22 @@ int main()
             strcpy(msg.data,info[1]);
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
             
-            read(sock_desc, server_message, sizeof(server_message));
+            if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                printf("read socket not success);
+                continue;
+            }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
+                if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                    printf("read socket not success);
+                    break;
+                }
                 decode();
             }
             if(response.type!=LO_ACK){
@@ -124,7 +133,10 @@ int main()
             msg.size = 0;
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
             
             close(sock_desc);
         }
@@ -140,13 +152,22 @@ int main()
             strcpy(msg.data,command);
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
             
-            read(sock_desc, server_message, sizeof(server_message));
+            if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                printf("read socket not success);
+                continue;
+            }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
+                if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                    printf("read socket not success);
+                    break;
+                }
                 decode();
             }
             if(response.type!=JN_ACK){
@@ -164,7 +185,10 @@ int main()
             msg.size = 0;
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
 
         }
         else if (strcmp(command, "/createsession") == 0){
@@ -179,13 +203,22 @@ int main()
             strcpy(msg.data,command);
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
             
-            read(sock_desc, server_message, sizeof(server_message));
+            if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                printf("read socket not success);
+                continue;
+            }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
+                if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                    printf("read socket not success);
+                    continue;
+                }
                 decode();
             }
 
@@ -201,14 +234,23 @@ int main()
             msg.size = 0;
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
             
-            read(sock_desc, server_message, sizeof(server_message));
+            if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                printf("read socket not success);
+                continue;
+            }
             decode();
 
             while(response.type==MESSAGE){
                 text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
+                if (read(sock_desc, server_message, sizeof(server_message))<=0){
+                    printf("read socket not success);
+                    break;
+                }
                 decode();
             }
             if(response.type!=QU_ACK)
@@ -234,7 +276,11 @@ int main()
             strcpy(msg.data,input);
 
             encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            
+            if(write(sock_desc, client_message, sizeof(client_message))<=0){
+                printf("socket sent not success");
+                continue;
+            }
         }
     }
 }
