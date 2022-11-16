@@ -7,7 +7,6 @@
 
 #define MAX_CMD 80
 
-char commands[MAX_CMD], input[2000];
 int sock_desc, connfd;
 struct sockaddr_in servaddr;
 struct message msg, response;
@@ -45,11 +44,11 @@ int main()
 
     while (true)
     {
+        char input[2000], cmd[2000];
         fgets(input, 2000, stdin);
 
-        char *command = strtok(input, " \n");
-
-        printf("%s\n", command);
+        strcpy(cmd,input);
+        char *command = strtok(cmd, " \n");
 
         if (strcmp(command, "/login") == 0)
         {
@@ -228,16 +227,14 @@ int main()
             return (0);
         }
         else{
-            printf("%s\n", input);
-            // bzero(msg.data,MAX_DATA);
-            // msg.type = MESSAGE;
-            // msg.size = strlen(command);
-            // msg.data = command;
+            printf("send message: %s\n",input);
+            bzero(msg.data,MAX_DATA);
+            msg.type = MESSAGE;
+            msg.size = strlen(input);
+            strcpy(msg.data,input);
 
-            // write(sock_desc, msg, sizeof(msg));
+            encode();
+            write(sock_desc, client_message, sizeof(client_message));
         }
     }
-
-    // close the socket
-    // close(sockfd);
 }
