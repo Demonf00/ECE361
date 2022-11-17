@@ -209,6 +209,7 @@ bool quitSession(ClientData* database, int clientid, Session* session, int sessi
         session[sessionid].clientList = NULL;
         free(database[clientid].sessionList);
         database[clientid].sessionList = NULL;
+        session[sessionid].meetingName[0] = '\0';
     }
     else{
         ClientId* current = session[sessionid].clientList;
@@ -300,7 +301,7 @@ int main(int argc, char *argv[])
             close(sockfd);
             while(true)
             {
-                printf("Server: waiting for client %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+                // printf("Server: waiting for client %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
                 memset(&client_message, 0, sizeof(client_message));
                 if(read(connfd, client_message, sizeof(client_message))<=0)
                 {
@@ -347,6 +348,7 @@ int main(int argc, char *argv[])
                 {
                     int clientid = getClientid(database, response.source);
                     int sessionid = getSessionid(sessions, response.data);
+                    printf("client %s:%d, session %s:%d\n",response.source, clientid, response.data, sessionid);
                     assert(clientid != -1);
                     if (sessionid != -1 && joinSession(database, clientid, sessions, sessionid))
                     {
@@ -450,6 +452,7 @@ int main(int argc, char *argv[])
                 }
                 else if(response.type == QUERY)
                 {
+                    bzero(buffer, BUFSIZ);
                     strcpy(buffer, "Client:\n");
                     
                     for (int i = 0; i < MAX_USERS; ++i)
