@@ -176,6 +176,11 @@ int main()
         }
         else if (strcmp(command, "/joinsession") == 0){
             // /joinsession <session ID>
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
+            
             printf("in joinsession mode\n");
             command  = strtok(NULL, " \n");
             char *session_id = command;
@@ -185,10 +190,7 @@ int main()
             msg.size = strlen(command);
             strcpy(msg.data,command);
 
-            read(sock_desc, server_message, sizeof(server_message));
-            if(decode()){
-                read_msg();
-            }
+            
 
             encode();
             write(sock_desc, client_message, sizeof(client_message));
@@ -223,6 +225,10 @@ int main()
         }
         else if (strcmp(command, "/createsession") == 0){
             // /createsession <session ID> Create and join new session
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
             printf("in createsession mode\n");
 
             command  = strtok(NULL, " \n");
@@ -232,10 +238,7 @@ int main()
             msg.size = strlen(command);
             strcpy(msg.data,command);
 
-            read(sock_desc, server_message, sizeof(server_message));
-            if(decode()){
-                read_msg();
-            }
+            
 
             encode();
             write(sock_desc, client_message, sizeof(client_message));
@@ -254,15 +257,16 @@ int main()
         }
         else if (strcmp(command, "/list") == 0){
             // Get the list of the connected clients and available sessions
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
             printf("in list mode\n");
             bzero(msg.data,MAX_DATA);
             msg.type = QUERY;
             msg.size = 0;
 
-            read(sock_desc, server_message, sizeof(server_message));
-            if(decode()){
-                read_msg();
-            }
+            
 
             encode();
             write(sock_desc, client_message, sizeof(client_message));
