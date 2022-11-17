@@ -14,6 +14,9 @@
 #include <arpa/inet.h> 
 #include <netinet/in.h>
 #include <stdbool.h>
+#include <assert.h>
+#include <pthread.h>
+#include <sys/mman.h>
 #include <strings.h> // bzero()
 #define MIN(i, j) (((i) < (j)) ? (i) : (j))
 #define MAX_CMD 80
@@ -38,7 +41,8 @@ typedef enum {
     NS_ACK,//Acknowledge new conference session
     MESSAGE,//Send a message to the session or display the message if it is received
     QUERY,//Get a list of online users and available sessions
-    QU_ACK//Reply followed by a list of users online
+    QU_ACK,//Reply followed by a list of users online
+    ERROR
 } Control;
 
 struct message {
@@ -59,7 +63,7 @@ typedef struct clientId{
 }ClientId;
 
 typedef struct session{
-    char meetingName[MAX_MEETING_NAME];
+    unsigned char meetingName[MAX_MEETING_NAME];
     int users;
     ClientId* clientList;
 }Session;
@@ -88,8 +92,8 @@ application layer and transfer layer.
 void init(void); //init everything
 void loadData(ClientData* database, char* sourcePath);//load data from the source database
 bool checkLog(ClientData* database, unsigned char* name, unsigned char* password, int log, int fd);//if log == 1, log in, if log == 0, quit.
-int getSessionid(char* sessionName, Session* sessions);//get session id
-int getClientid(ClientData* database, const ClientData* client);//get client id
+int getSessionid(Session* sessions, unsigned char* name);//get session id
+int getClientid(ClientData* database, unsigned char* name);//get client id
 //need check if already in one session when join.
 bool joinSession(ClientData* database, int clientid, Session* session, int sessionid);//join in a session, if not exist, create one, if full, return false.
 bool quitSession(ClientData* database, int clientid, Session* session, int sessionid);//quit from a session, if no one in it, delete it.

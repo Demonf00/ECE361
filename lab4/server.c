@@ -1,16 +1,17 @@
 //servr should check if the client is join two or more session
 #include "conference.h"
 
-Session sessions[MAX_MEETINGS];
-ClientData database[MAX_USERS];
+Session* sessions;
+ClientData* database;
 char buffer[BUFSIZ];
 int numSessions = 0;
 char* databasePath = "./clientData";
 int sockfd;
-int connfd[MAX_USERS];
+int connfd;
 int user_numbers = 0;
 struct sockaddr_in servaddr, cliaddr;
 struct message msg, response;
+pid_t childpid;
 char server_message[5000], client_message[5000];
 
 void encode(){
@@ -47,6 +48,8 @@ void text_recv(){
 
 void init(void)
 {
+    // database = (ClientData*)malloc(sizeof(ClientData)*MAX_USERS);
+    // sessions = (Session*)malloc(sizeof(Session)*MAX_MEETINGS);
     for (int i = 0; i < MAX_USERS; ++i)
     {
         database[i].status = 0;
@@ -115,6 +118,8 @@ bool checkLog(ClientData* database, unsigned char* name, unsigned char* password
             return false;
         if (strcmp(database[i].name, name) == 0)
         {
+            if (database[i].status == log)
+                return false;
             if (!log)
             {
                 database[i].status = log;
@@ -131,21 +136,21 @@ bool checkLog(ClientData* database, unsigned char* name, unsigned char* password
     return false;
 }
 
-int getSessionid(char* sessionName, Session* sessions)
+int getSessionid(Session* sessions, unsigned char* name)
 {
     for (int i = 0; i < MAX_MEETINGS; ++i)
     {
-        if (strcmp(sessions[i].meetingName, sessionName) == 0)
+        if (strcmp(sessions[i].meetingName, name) == 0)
             return i;
     }
     return -1;// not found
 }
 
-int getClientid(ClientData* database, const ClientData* client)
+int getClientid(ClientData* database, unsigned char* name)
 {
     for (int i = 0; i < MAX_USERS; ++i)
     {
-        if (database[i].address == client->address && database[i].port == client->port)
+        if (strcmp(database[i].name, name) == 0)
             return i;
     }
     return -1;
@@ -198,7 +203,33 @@ bool quitSession(ClientData* database, int clientid, Session* session, int sessi
         free(database[clientid].sessionList);
         database[clientid].sessionList = NULL;
     }
-
+    else{
+        ClientId* current = session[sessionid].clientList;
+        ClientId* previous = NULL;
+        while(current != NULL && current->id != clientid)
+        {
+            previous = current;
+            current = current->next;
+        }
+        if (current == NULL)
+            return false;
+        else if (current == session[sessionid].clientList)
+        {
+            session[sessionid].clientList = current->next;
+            free(current);
+            session[sessionid].users--;
+            free(database[clientid].sessionList);
+            database[clientid].sessionList = NULL;
+        }
+        else{
+            previous->next = current->next;
+            free(current);
+            session[sessionid].users--;
+            free(database[clientid].sessionList);
+            database[clientid].sessionList = NULL;
+        }
+    }
+    return true;
 }
 
 void clear(void)
@@ -215,6 +246,10 @@ int main(int argc, char *argv[])
     }
     int port = atoi(argv[1]);
 
+    sessions = mmap(NULL, sizeof(Session)*MAX_MEETINGS, PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    database = mmap(NULL, sizeof(ClientData)*MAX_USERS, PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     //need to check if the port is possible here.
     init();
     loadData(database, databasePath);  
@@ -233,84 +268,182 @@ int main(int argc, char *argv[])
         exit(0);
     }
     int len = sizeof(cliaddr);
-
+    if ((listen(sockfd, 5)) != 0) {
+        printf("Listen failed...\n");
+        exit(0);
+    }
+    else
+        printf("Server listening..\n");
     while(true)
     {
-        if ((listen(sockfd, 5)) != 0) {
-            printf("Listen failed...\n");
-            // continue;
-        }
-        else
-            printf("Server listening..\n");
-        connfd[user_numbers] = accept(sockfd, (struct sockaddr*)&cliaddr, &len);
-        if (connfd[user_numbers] < 0) {
+        connfd = accept(sockfd, (struct sockaddr*)&cliaddr, &len);
+        // printf("%d\n", connfd[user_numbers]);
+        if (connfd < 0) {
             printf("server accept failed...\n");
-            // continue;
+            exit(0);
         }
         else{
-            printf("server accept the client...\n");
+
+            printf("Server accepted the client from %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
             user_numbers++;
         }
-        for (int i = 0; i < user_numbers; ++i)
+        
+        if ((childpid = fork()) == 0)
         {
-            // printf("hello %d\n", i);
-            if(read(connfd[i], client_message, sizeof(client_message))<=0)
+            close(sockfd);
+            while(true)
             {
-                printf("read socket not success\n");
-                continue;
-            }
-            // printf("receive messgae from client!\n");
-            decode();
-            // printf("receive messgae from client!\n");
-            if(response.type == LOGIN)
-            {
-                printf("login\n");
-                if (checkLog(database, response.source, response.data, 1, connfd[i]))
+                printf("Server: waiting for client %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+                memset(&client_message, 0, sizeof(client_message));
+                if(read(connfd, client_message, sizeof(client_message))<=0)
                 {
-                    msg.type = LO_ACK;
-                    msg.size = 0;
-                    msg.data[0] = '\0';
-                    msg.source[0] = '\0';
+                    printf("read socket not success\n");
+                    continue;
                 }
-                else{
-                    msg.type = LO_NAK;
-                    msg.size = 0;
-                    msg.data[0] = '\0';
-                    msg.source[0] = '\0';
+                // printf("receive messgae from client!\n");
+                decode();
+                // printf("receive messgae from client!\n");
+                if(response.type == LOGIN)
+                {
+                    // printf("login\n");
+                    if (checkLog(database, response.source, response.data, 1, connfd))
+                    {
+                        printf("login\n");
+                        msg.type = LO_ACK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    else{
+                        printf("login failed\n");
+                        msg.type = LO_NAK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back log failed\n");
+                    printf("Ack sent\n");
                 }
-                encode();
-                while (write(connfd[i], server_message, sizeof(server_message)) <= 0)
-                    printf("Server: sent back log failed\n");
-                printf("Ack sent\n");
-            }
-            else if(response.type == EXIT)
-            {
-                if (!checkLog(database, response.source, response.data, 0, connfd[i]))
-                    printf("Server: client %s exit error\n", response.source);
-            }
-            else if(response.type == JOIN)
-            {
+                else if(response.type == EXIT)
+                {
+                    if (!checkLog(database, response.source, response.data, 0, connfd))
+                    {
+                        printf("Server: client %s exit error\n", response.source);
+                        break;
+                    }
+                    printf("Server disconnected the client from %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+                    break;
+                }
+                else if(response.type == JOIN)
+                {
+                    int clientid = getClientid(database, response.source);
+                    int sessionid = getSessionid(sessions, response.data);
+                    assert(clientid != -1);
+                    if (sessionid != -1 && joinSession(database, clientid, sessions, sessionid))
+                    {
+                        printf("Client %s joined %s \n", response.source, response.data);
+                        msg.type = JN_ACK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    else{
+                        printf("Client %s failed to join %s \n", response.source, response.data);
+                        msg.type = JN_NAK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back join failed\n");
+                    printf("Ack sent\n");
+                }
+                else if(response.type == LEAVE_SESS)
+                {
+                    int clientid = getClientid(database, response.source);
+                    int sessionid = database[clientid].sessionList->id;
+                    assert(clientid != -1);
+                    if (sessionid != -1 && quitSession(database, clientid, sessions, sessionid))
+                    {
+                        printf("Client %s quited %s \n", response.source, sessions[sessionid].meetingName);
+                        msg.type = LEAVE_SESS;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    else
+                    {
+                        printf("Client %s failed to quit %s \n", response.source, sessions[sessionid].meetingName);
+                        msg.type = ERROR;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back quit failed\n");
+                    printf("Ack sent\n");
+                }
+                else if(response.type == NEW_SESS)
+                {
+                    for (int i = 0; i < MAX_MEETINGS; ++i)
+                    {
+                        if(sessions[i].meetingName[0] == '\0')
+                        {
+                            strcpy(sessions[i].meetingName, response.data);
+                            break;
+                        }
+                    }
+                    printf("Sessions:\n");
+                    for (int i = 0; i < MAX_MEETINGS; ++i)
+                    {
+                        if (sessions[i].meetingName[0] != '\0')
+                            printf("%s\n", sessions[i].meetingName);
+                    }
+                    msg.type = NS_ACK;
+                    msg.size = 0;
+                    msg.data[0] = ' ';
+                    msg.source[0] = ' ';
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back new session failed\n");
+                    printf("Server: session %s created\n", response.data);
+                }
+                else if(response.type == MESSAGE)
+                {
+                    msg.type = response.type;
+                    msg.size = response.size;
+                    strcpy(msg.source, response.source);
+                    strcpy(msg.data, response.data);
+                    encode();
+                    int clientid = getClientid(database, response.source);
+                    int sessionid = database[clientid].sessionList->id;
+                    ClientId* current = sessions[sessionid].clientList;
+                    while(current != NULL)
+                    {
+                        while (write(database[current->id].fd,server_message, sizeof(server_message))<=0)
+                            printf("Server: Sent message to %s failed\n", database[current->id].name);
+                        current = current->next;
+                    }
+                }
+                else if(response.type == QUERY)
+                {
 
-            }
-            else if(response.type == LEAVE_SESS)
-            {
-
-            }
-            else if(response.type == NEW_SESS)
-            {
-
-            }
-            else if(response.type == MESSAGE)
-            {
-
-            }
-            else if(response.type == QUERY)
-            {
-
-            }
-            else
-            {
-
+                }
+                else
+                {
+                    msg.type = ERROR;
+                    msg.size = 0;
+                    msg.data[0] = ' ';
+                    msg.source[0] = ' ';
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back error failed\n");
+                    printf("Error!\n");
+                }
             }
         }
 

@@ -105,6 +105,7 @@ int main()
                 printf("read socket not success");
                 continue;
             }
+
             decode();
             while(response.type==MESSAGE){
                 text_recv();
@@ -134,10 +135,10 @@ int main()
                 printf("socket sent not success");
                 continue;
             }
-            
+            printf("socket sent success");
             close(sock_desc);
         }
-        else if (strcmp(command, "/joinsession>") == 0){
+        else if (strcmp(command, "/joinsession") == 0){
             // /joinsession <session ID>
             printf("in joinsession mode\n");
             command  = strtok(NULL, " ");
@@ -147,6 +148,8 @@ int main()
             msg.type = JOIN;
             msg.size = strlen(command);
             strcpy(msg.data,command);
+            printf("%s\n", msg.data);
+            msg.data[strlen(msg.data) - 1] = '\0';
 
             encode();
             if(write(sock_desc, client_message, sizeof(client_message))<=0){
@@ -198,6 +201,8 @@ int main()
             msg.type = NEW_SESS;
             msg.size = strlen(command);
             strcpy(msg.data,command);
+            printf("%s\n", msg.data);
+            msg.data[strlen(msg.data) - 1] = '\0';
 
             encode();
             if(write(sock_desc, client_message, sizeof(client_message))<=0){
