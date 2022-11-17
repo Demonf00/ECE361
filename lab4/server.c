@@ -300,15 +300,35 @@ int main(int argc, char *argv[])
         if ((childpid = fork()) == 0)
         {
             close(sockfd);
+            struct timeval timeout;
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 1000;
+            int count = 0;
             while(true)
             {
                 // printf("Server: waiting for client %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
                 memset(&client_message, 0, sizeof(client_message));
                 if(read(connfd, client_message, sizeof(client_message))<=0)
                 {
-                    printf("read socket not success\n");
+                    // printf("read socket not success\n");
+                    count++;
+                    if (count >= 20)
+                    {
+                        for (int i = 0; i < MAX_USERS; ++i)
+                        {
+                            if (database[i].fd == connfd)
+                            {
+                                database[i].status = 0;//log out
+                                quitSession(database, i, sessions, database[i].sessionList->id);
+                            }
+
+                        }
+                        close(connfd);
+                        exit(0);
+                    }
                     continue;
                 }
+                count = 0;
                 // printf("receive messgae from client!\n");
                 decode();
                 // printf("receive messgae from client!\n");
@@ -461,7 +481,7 @@ int main(int argc, char *argv[])
                         {
                             printf("Server: sent message to %s:%d\n", database[i].name, i);
                             while(write(database[i].fd, server_message, sizeof(server_message))<=0);
-                                printf("Server: Sent message to %s failed\n", database[i].name);
+                            printf("Server: Sent message to %s success!\n", database[i].name);
                         }
                     }
                 }
@@ -499,6 +519,9 @@ int main(int argc, char *argv[])
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back query failed\n");
                 }
+                // else if(response.type == QUIT){
+                    
+                // }
                 else
                 {
                     msg.type = ERROR;
@@ -508,7 +531,7 @@ int main(int argc, char *argv[])
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back error failed\n");
-                    printf("Error!\n");
+                    printf("Error! Unknow flag\n");
                 }
             }
         }
