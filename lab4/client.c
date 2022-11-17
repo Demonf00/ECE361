@@ -45,7 +45,7 @@ bool decode(){
         item  = strtok(NULL, ";");
     }
     if (i<4){
-        printf("decode not success\n");
+        // printf("decode not success\n");
         return false;
     }
     response.type = atoi(contain[0]);
