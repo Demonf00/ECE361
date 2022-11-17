@@ -160,6 +160,8 @@ bool joinSession(ClientData* database, int clientid, Session* session, int sessi
 {
     if (session[sessionid].users == MAX_USERS_IN_A_MEETING)
         return false;
+    if (database[clientid].sessionList != NULL && database[clientid].sessionList->id == sessionid)
+        return false;
     if (session[sessionid].users == 0)
     {
         session[sessionid].clientList = (ClientId*)malloc(sizeof(ClientId));
@@ -171,16 +173,21 @@ bool joinSession(ClientData* database, int clientid, Session* session, int sessi
         session[sessionid].users++;
     }
     else{
-        ClientId* current = session[sessionid].clientList;
-        while(current->next != NULL)
-        {
-            // previous = current;
-            current = current->next;
-        }
+        // ClientId* current = session[sessionid].clientList;
+        // while(current->next != NULL)
+        // {
+        //     // previous = current;
+        //     current = current->next;
+        //     printf("%d %d", current->id, session[sessionid].clientList->id);
+        // }
+        // printf("%d %d", current->id, session[sessionid].clientList->id);
         ClientId* newclient = (ClientId*)malloc(sizeof(ClientId));
         newclient->id = clientid;
-        newclient->next = current->next;
-        current->next = newclient;
+        printf("%d %d\n", clientid, session[sessionid].clientList->id);
+        newclient->next = session[sessionid].clientList;
+        session[sessionid].clientList = newclient;
+        // current->next = newclient;
+        printf("%d %d\n", session[sessionid].clientList->id,session[sessionid].clientList->next->id );
         SessionId* newsession = (SessionId*)malloc(sizeof(SessionId));
         newsession->id = sessionid;
         newsession->next = NULL;
@@ -414,24 +421,65 @@ int main(int argc, char *argv[])
                 }
                 else if(response.type == MESSAGE)
                 {
-                    msg.type = response.type;
-                    msg.size = response.size;
-                    strcpy(msg.source, response.source);
-                    strcpy(msg.data, response.data);
-                    encode();
+                    memcpy(server_message,client_message,sizeof(server_message));
                     int clientid = getClientid(database, response.source);
+                    printf("Server: client %s, %d wanna sent message\n", response.source, clientid);
+                    if (database[clientid].sessionList == NULL)
+                    {
+                        printf("Server: client %s not in a session\n", response.source);
+                        msg.type = ERROR;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                        encode();
+                        while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                            printf("Server: sent back message failed\n");
+                        continue;
+                    }
                     int sessionid = database[clientid].sessionList->id;
                     ClientId* current = sessions[sessionid].clientList;
                     while(current != NULL)
                     {
+                        printf("%d %s\n", current->id, database[current->id].name);
                         while (write(database[current->id].fd,server_message, sizeof(server_message))<=0)
                             printf("Server: Sent message to %s failed\n", database[current->id].name);
-                        current = current->next;
+                        if (current->next != current)
+                            current = current->next;
+                        else break;
                     }
                 }
                 else if(response.type == QUERY)
                 {
-
+                    strcpy(buffer, "Client:\n");
+                    
+                    for (int i = 0; i < MAX_USERS; ++i)
+                    {
+                        if (database[i].status == 1)
+                        {   
+                            // printf("%s\n", database[i].name);
+                            strcat(buffer, database[i].name);
+                            strcat(buffer, "\n");
+                        }
+                        
+                    }
+                    strcat(buffer, "Sessions:\n");
+                    for (int i = 0; i < MAX_MEETINGS; ++i)
+                    {
+                        if (sessions[i].meetingName[0] != '\0')
+                        {
+                            // printf("%s\n", sessions[i].meetingName);
+                            strcat(buffer, sessions[i].meetingName);
+                            strcat(buffer, "\n");
+                        }
+                    }
+                    // printf("%s\n", buffer);
+                    msg.type = QU_ACK;
+                    msg.size = strlen(buffer);
+                    msg.source[0] = ' ';
+                    memcpy(msg.data, buffer,msg.size);
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back query failed\n");
                 }
                 else
                 {
