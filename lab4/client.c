@@ -24,7 +24,7 @@ void decode(){
     int i=0;
     while(item != NULL){
         contain[i++]=item;
-        item  = strtok(NULL, ":");
+        item  = strtok(NULL, ";");
     }
     response.type = atoi(contain[0]);
     response.size = atoi(contain[1]);
