@@ -424,8 +424,10 @@ int main(int argc, char *argv[])
                 }
                 else if(response.type == MESSAGE)
                 {
-                    memcpy(server_message,client_message,sizeof(server_message));
+                    // memcpy(server_message,client_message,sizeof(client_message));
                     int clientid = getClientid(database, response.source);
+                    
+                    memcpy((struct message*)&msg, (struct message*)&response, sizeof(struct message));
                     printf("Server: client %s, %d wanna sent message\n", response.source, clientid);
                     if (database[clientid].sessionList == NULL)
                     {
@@ -451,12 +453,14 @@ int main(int argc, char *argv[])
                     //     else break;
                     // }
                     int sessionid = database[clientid].sessionList->id;
+                    encode();
+                    printf("Server: sent %s\n", server_message);
                     for (int i = 0; i < MAX_USERS; ++i)
                     {
                         if (database[i].sessionList != NULL && database[i].sessionList->id == sessionid)
                         {
                             printf("Server: sent message to %s:%d\n", database[i].name, i);
-                            while(write(database[i].fd, server_message, sizeof(server_message))<=0)
+                            while(write(database[i].fd, server_message, sizeof(server_message))<=0);
                                 printf("Server: Sent message to %s failed\n", database[i].name);
                         }
                     }
