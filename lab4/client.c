@@ -3,6 +3,9 @@
 // https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
 // https://aticleworld.com/socket-programming-in-c-using-tcpip/
 
+#include <strings.h> // bzero()
+
+#define MAX_CMD 80
 
 int sock_desc, connfd;
 struct sockaddr_in servaddr;
@@ -14,7 +17,7 @@ void encode(){
     snprintf(client_message, sizeof(client_message),
     "%d;%d;%s;%s",msg.type,msg.size,msg.source,msg.data);
 }
-void decode(){
+bool decode(){
     bzero(response.data,MAX_DATA);
     char *item  = strtok(server_message, ";");
     char *contain[4];
@@ -23,29 +26,47 @@ void decode(){
         contain[i++]=item;
         item  = strtok(NULL, ";");
     }
+    if (i<4){
+        printf("decode not success\n");
+        return false;
+    }
     response.type = atoi(contain[0]);
     response.size = atoi(contain[1]);
     strcpy(response.source,contain[2]);
     strcpy(response.data,contain[3]);
 
     bzero(server_message,sizeof(server_message));
+    return true;
 
 }
 
 void text_recv(){
-    printf("%s\n",response.data);
+    printf("received message: %s\n",response.data);
 }
 
 int main()
 {
+    bool recv_msg = false;
 
     while (true)
     {
+        if(recv_msg){
+            if(read(sock_desc, server_message, sizeof(server_message))>0){
+                if(decode()){
+                    if(response.type==MESSAGE)
+                        text_recv();
+                }
+            }
+        }
+        printf("$ ");
         char input[2000], cmd[2000];
         fgets(input, 2000, stdin);
 
         strcpy(cmd,input);
         char *command = strtok(cmd, " \n");
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 1000;
 
         if (strcmp(command, "/login") == 0)
         {
@@ -56,7 +77,6 @@ int main()
             int i=0;
             command  = strtok(NULL, " ");
             while(command != NULL&&i<4){
-                printf("%d\n",i);
                 info[i++]=command;
                 command  = strtok(NULL, " ");
             }
@@ -86,7 +106,7 @@ int main()
             if (connect(sock_desc, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0)
             {
                 printf("connection with the server failed\n");
-                return -1;
+                continue;
             }
 
             
@@ -96,31 +116,26 @@ int main()
             strcpy(msg.data,info[1]);
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
+            int xx = write(sock_desc, client_message, sizeof(client_message));
+            printf("longin request sent\n");
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode())
                 continue;
-            }
-            
-            if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success");
-                continue;
-            }
-
-            decode();
-            while(response.type==MESSAGE){
-                text_recv();
-                if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success");
-                    break;
-                }
-                decode();
-            }
+            // while(response.type==MESSAGE){
+            //     text_recv();
+            //     read(sock_desc, server_message, sizeof(server_message));
+            //     if(!decode())
+            //     continue;
+            // }
             if(response.type!=LO_ACK){
                 printf("login not success\n");
                 if(response.type==LO_NAK)
                     printf("%s\n", response.data);
+                continue;
             }
-
+            setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
+            printf("login success\n");
+            // continue;
         }
         else if (strcmp(command, "/logout") == 0){
             //reset client
@@ -131,50 +146,45 @@ int main()
             msg.size = 0;
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
-            printf("socket sent success");
+            write(sock_desc, client_message, sizeof(client_message));
+            
+            read(sock_desc, server_message, sizeof(server_message));
+            printf("logout now\n");
             close(sock_desc);
+            // continue;
         }
         else if (strcmp(command, "/joinsession") == 0){
             // /joinsession <session ID>
             printf("in joinsession mode\n");
-            command  = strtok(NULL, " ");
+            command  = strtok(NULL, " \n");
             char *session_id = command;
 
             bzero(msg.data,MAX_DATA);
             msg.type = JOIN;
             msg.size = strlen(command);
             strcpy(msg.data,command);
-            printf("%s\n", msg.data);
-            msg.data[strlen(msg.data) - 1] = '\0';
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
+            write(sock_desc, client_message, sizeof(client_message));
             
-            if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success");
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode())
                 continue;
-            }
-            decode();
-            while(response.type==MESSAGE){
-                text_recv();
-                if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success");
-                    break;
-                }
-                decode();
-            }
+            // while(response.type==MESSAGE){
+            //     text_recv();
+            //     read(sock_desc, server_message, sizeof(server_message));
+            //    if(!decode())
+            //     continue;
+            // }
             if(response.type!=JN_ACK){
                     printf("join not success\n");
                     if(response.type==JN_NAK)
                         printf("reason: %s\n", response.data);
+                    continue;
             }
+            printf("joined session %s\n", command);
+            recv_msg = true;                
+            
         }
         else if (strcmp(command, "/leavesession") == 0){
             // leave current session
@@ -185,47 +195,40 @@ int main()
             msg.size = 0;
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
+            write(sock_desc, client_message, sizeof(client_message));
+            printf("leaved session\n");
+            recv_msg = false;
 
         }
         else if (strcmp(command, "/createsession") == 0){
             // /createsession <session ID> Create and join new session
             printf("in createsession mode\n");
 
-            command  = strtok(NULL, " ");
+            command  = strtok(NULL, " \n");
 
             bzero(msg.data,MAX_DATA);
             msg.type = NEW_SESS;
             msg.size = strlen(command);
             strcpy(msg.data,command);
-            printf("%s\n", msg.data);
-            msg.data[strlen(msg.data) - 1] = '\0';
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
+            write(sock_desc, client_message, sizeof(client_message));
             
-            if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success");
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode())
                 continue;
-            }
-            decode();
-            while(response.type==MESSAGE){
-                text_recv();
-                if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success");
-                    continue;
-                }
-                decode();
-            }
+            // while(response.type==MESSAGE){
+            //     text_recv();
+            //     read(sock_desc, server_message, sizeof(server_message));
+            //     if(!decode())
+            //     continue;
+            // }
 
             if(response.type!=NS_ACK)
-                    printf("create not success\n");  
+                printf("create not success\n");  
+            else
+                printf("created session %s\n", command);
+            
 
         }
         else if (strcmp(command, "/list") == 0){
@@ -236,25 +239,18 @@ int main()
             msg.size = 0;
 
             encode();
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
+            write(sock_desc, client_message, sizeof(client_message));
             
-            if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success");
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode())
                 continue;
-            }
-            decode();
 
-            while(response.type==MESSAGE){
-                text_recv();
-                if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success");
-                    break;
-                }
-                decode();
-            }
+            // while(response.type==MESSAGE){
+            //     text_recv();
+            //     read(sock_desc, server_message, sizeof(server_message));
+            //     if(!decode())
+            //     continue;
+            // }
             if(response.type!=QU_ACK)
                     printf("get list not success\n"); 
             else{
@@ -271,18 +267,18 @@ int main()
             return (0);
         }
         else{
-            printf("send message: %s\n",input);
+            char *send_msg = strtok(input, "\n");
+            printf("send message: %s\n",send_msg);
             bzero(msg.data,MAX_DATA);
             msg.type = MESSAGE;
-            msg.size = strlen(input);
-            strcpy(msg.data,input);
+            msg.size = strlen(send_msg);
+            strcpy(msg.data,send_msg);
 
             encode();
-            
-            if(write(sock_desc, client_message, sizeof(client_message))<=0){
-                printf("socket sent not success");
-                continue;
-            }
+            printf("send %s\n", client_message);
+            write(sock_desc, client_message, sizeof(client_message));
         }
+        
+            
     }
 }
