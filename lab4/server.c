@@ -320,9 +320,10 @@ int main(int argc, char *argv[])
                             {
                                 database[i].status = 0;//log out
                                 quitSession(database, i, sessions, database[i].sessionList->id);
-                            }
-
+                                printf("Server: Disconnected client %s:%d\n", database[i].name, i);
                         }
+                            }
+                            
                         close(connfd);
                         exit(0);
                     }
