@@ -42,6 +42,7 @@ typedef enum {
     MESSAGE,//Send a message to the session or display the message if it is received
     QUERY,//Get a list of online users and available sessions
     QU_ACK,//Reply followed by a list of users online
+    QUIT,
     ERROR
 } Control;
 

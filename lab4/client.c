@@ -1,16 +1,34 @@
 #include "conference.h"
 
-// https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
-// https://aticleworld.com/socket-programming-in-c-using-tcpip/
-
-#include <strings.h> // bzero()
-
 #define MAX_CMD 80
 
 int sock_desc, connfd;
 struct sockaddr_in servaddr;
 struct message msg, response;
 char server_message[5000], client_message[5000];
+// char * received_msg[15];
+// front = -1;
+// rear = -1;
+
+// void enqueue(char *insert_item)
+// {
+//     int insert_item;
+//     if (Rear <15){
+//         if (Front == - 1)
+//             Front = 0;
+//         strcpy(response.data,contain[3])
+//         received_msg[++Rear] = insert_item;
+//     }
+// } 
+
+// void show()
+// {
+//     if (Front != - 1){
+//         for (int i = Front; i <= Rear; i++)
+//             printf("%d ", inp_arr[i]);
+//         printf("\n");
+//     }
+// } 
 
 void encode(){
     bzero(client_message,sizeof(client_message));
@@ -41,7 +59,7 @@ bool decode(){
 }
 
 void text_recv(){
-    printf("received message: %s\n",response.data);
+    printf("- received message: %s\n",response.data);
 }
 
 int main()
@@ -50,6 +68,7 @@ int main()
 
     while (true)
     {
+        char input[2000], cmd[2000];
         if(recv_msg){
             if(read(sock_desc, server_message, sizeof(server_message))>0){
                 if(decode()){
@@ -59,9 +78,8 @@ int main()
             }
         }
         printf("$ ");
-        char input[2000], cmd[2000];
         fgets(input, 2000, stdin);
-
+        
         strcpy(cmd,input);
         char *command = strtok(cmd, " \n");
         struct timeval timeout;
@@ -121,12 +139,12 @@ int main()
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode())
                 continue;
-            // while(response.type==MESSAGE){
-            //     text_recv();
-            //     read(sock_desc, server_message, sizeof(server_message));
-            //     if(!decode())
-            //     continue;
-            // }
+            while(response.type==MESSAGE){
+                text_recv();
+                read(sock_desc, server_message, sizeof(server_message));
+                if(!decode())
+                continue;
+            }
             if(response.type!=LO_ACK){
                 printf("login not success\n");
                 if(response.type==LO_NAK)
@@ -135,7 +153,6 @@ int main()
             }
             setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
             printf("login success\n");
-            // continue;
         }
         else if (strcmp(command, "/logout") == 0){
             //reset client
@@ -148,9 +165,7 @@ int main()
             encode();
             write(sock_desc, client_message, sizeof(client_message));
             
-            read(sock_desc, server_message, sizeof(server_message));
-            printf("logout now\n");
-            close(sock_desc);
+       
             // continue;
         }
         else if (strcmp(command, "/joinsession") == 0){
@@ -170,12 +185,12 @@ int main()
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode())
                 continue;
-            // while(response.type==MESSAGE){
-            //     text_recv();
-            //     read(sock_desc, server_message, sizeof(server_message));
-            //    if(!decode())
-            //     continue;
-            // }
+            while(response.type==MESSAGE){
+                text_recv();
+                read(sock_desc, server_message, sizeof(server_message));
+               if(!decode())
+                continue;
+            }
             if(response.type!=JN_ACK){
                     printf("join not success\n");
                     if(response.type==JN_NAK)
@@ -217,12 +232,12 @@ int main()
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode())
                 continue;
-            // while(response.type==MESSAGE){
-            //     text_recv();
-            //     read(sock_desc, server_message, sizeof(server_message));
-            //     if(!decode())
-            //     continue;
-            // }
+            while(response.type==MESSAGE){
+                text_recv();
+                read(sock_desc, server_message, sizeof(server_message));
+                if(!decode())
+                continue;
+            }
 
             if(response.type!=NS_ACK)
                 printf("create not success\n");  
@@ -245,12 +260,12 @@ int main()
             if(!decode())
                 continue;
 
-            // while(response.type==MESSAGE){
-            //     text_recv();
-            //     read(sock_desc, server_message, sizeof(server_message));
-            //     if(!decode())
-            //     continue;
-            // }
+            while(response.type==MESSAGE){
+                text_recv();
+                read(sock_desc, server_message, sizeof(server_message));
+                if(!decode())
+                continue;
+            }
             if(response.type!=QU_ACK)
                     printf("get list not success\n"); 
             else{
@@ -264,6 +279,13 @@ int main()
         }
         else if (strcmp(command, "/quit") == 0){
             // Terminate the program
+            bzero(msg.data,MAX_DATA);
+            msg.type = QUIT;
+            msg.size = 0;
+
+            encode();
+            write(sock_desc, client_message, sizeof(client_message));
+            close(sock_desc);
             return (0);
         }
         else{
