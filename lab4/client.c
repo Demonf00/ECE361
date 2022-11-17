@@ -62,6 +62,15 @@ void text_recv(){
     printf("- received message: %s\n",response.data);
 }
 
+void read_msg(){
+    while(response.type==MESSAGE){
+        text_recv();
+        read(sock_desc, server_message, sizeof(server_message));
+        if(!decode())
+            return;
+    }
+}
+
 int main()
 {
     bool recv_msg = false;
@@ -133,23 +142,20 @@ int main()
             strcpy(msg.source,info[0]);
             strcpy(msg.data,info[1]);
 
+
             encode();
             int xx = write(sock_desc, client_message, sizeof(client_message));
             printf("longin request sent\n");
             read(sock_desc, server_message, sizeof(server_message));
-            if(!decode())
-                continue;
-            while(response.type==MESSAGE){
-                text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
-                if(!decode())
+            if(!decode()){
+                printf("login not success\n");
                 continue;
             }
             if(response.type!=LO_ACK){
-                printf("login not success\n");
-                if(response.type==LO_NAK)
-                    printf("%s\n", response.data);
-                continue;
+                    printf("login not success\n");
+                    // if(response.type==LO_NAK)
+                    //     printf("%s\n", response.data);
+                    continue;
             }
             setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
             printf("login success\n");
@@ -179,18 +185,18 @@ int main()
             msg.size = strlen(command);
             strcpy(msg.data,command);
 
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
+
             encode();
             write(sock_desc, client_message, sizeof(client_message));
             
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode())
                 continue;
-            while(response.type==MESSAGE){
-                text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
-               if(!decode())
-                continue;
-            }
+            read_msg();
             if(response.type!=JN_ACK){
                     printf("join not success\n");
                     if(response.type==JN_NAK)
@@ -226,18 +232,18 @@ int main()
             msg.size = strlen(command);
             strcpy(msg.data,command);
 
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
+
             encode();
             write(sock_desc, client_message, sizeof(client_message));
             
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode())
                 continue;
-            while(response.type==MESSAGE){
-                text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
-                if(!decode())
-                continue;
-            }
+            read_msg();
 
             if(response.type!=NS_ACK)
                 printf("create not success\n");  
@@ -253,6 +259,11 @@ int main()
             msg.type = QUERY;
             msg.size = 0;
 
+            read(sock_desc, server_message, sizeof(server_message));
+            if(decode()){
+                read_msg();
+            }
+
             encode();
             write(sock_desc, client_message, sizeof(client_message));
             
@@ -260,14 +271,11 @@ int main()
             if(!decode())
                 continue;
 
-            while(response.type==MESSAGE){
-                text_recv();
-                read(sock_desc, server_message, sizeof(server_message));
-                if(!decode())
-                continue;
+            read_msg();
+            if(response.type!=QU_ACK){
+                printf("get list not success %d\n", response.type); 
             }
-            if(response.type!=QU_ACK)
-                    printf("get list not success\n"); 
+                    
             else{
                 char * user = strtok(response.data, " ");
                 while( user != NULL ) {
@@ -279,12 +287,12 @@ int main()
         }
         else if (strcmp(command, "/quit") == 0){
             // Terminate the program
-            bzero(msg.data,MAX_DATA);
-            msg.type = QUIT;
-            msg.size = 0;
+            // bzero(msg.data,MAX_DATA);
+            // msg.type = QUIT;
+            // msg.size = 0;
 
-            encode();
-            write(sock_desc, client_message, sizeof(client_message));
+            // encode();
+            // write(sock_desc, client_message, sizeof(client_message));
             close(sock_desc);
             return (0);
         }
