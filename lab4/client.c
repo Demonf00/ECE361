@@ -3,9 +3,6 @@
 // https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
 // https://aticleworld.com/socket-programming-in-c-using-tcpip/
 
-#include <strings.h> // bzero()
-
-#define MAX_CMD 80
 
 int sock_desc, connfd;
 struct sockaddr_in servaddr;
@@ -24,7 +21,7 @@ void decode(){
     int i=0;
     while(item != NULL){
         contain[i++]=item;
-        item  = strtok(NULL, ":");
+        item  = strtok(NULL, ";");
     }
     response.type = atoi(contain[0]);
     response.size = atoi(contain[1]);
@@ -105,14 +102,14 @@ int main()
             }
             
             if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success);
+                printf("read socket not success");
                 continue;
             }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
                 if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success);
+                    printf("read socket not success");
                     break;
                 }
                 decode();
@@ -158,14 +155,14 @@ int main()
             }
             
             if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success);
+                printf("read socket not success");
                 continue;
             }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
                 if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success);
+                    printf("read socket not success");
                     break;
                 }
                 decode();
@@ -209,14 +206,14 @@ int main()
             }
             
             if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success);
+                printf("read socket not success");
                 continue;
             }
             decode();
             while(response.type==MESSAGE){
                 text_recv();
                 if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success);
+                    printf("read socket not success");
                     continue;
                 }
                 decode();
@@ -240,7 +237,7 @@ int main()
             }
             
             if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                printf("read socket not success);
+                printf("read socket not success");
                 continue;
             }
             decode();
@@ -248,7 +245,7 @@ int main()
             while(response.type==MESSAGE){
                 text_recv();
                 if (read(sock_desc, server_message, sizeof(server_message))<=0){
-                    printf("read socket not success);
+                    printf("read socket not success");
                     break;
                 }
                 decode();
