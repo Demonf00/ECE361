@@ -199,6 +199,10 @@ bool quitSession(ClientData* database, int clientid, Session* session, int sessi
     free(database[clientid].sessionList);
     database[clientid].sessionList = NULL;
     session[sessionid].users--;
+    if (session[sessionid].users == 0)
+    {
+        session[sessionid].meetingName[0] = '\0';
+    }
     // if (session[sessionid].users == 1)
     // {
     //     session[sessionid].users--;
