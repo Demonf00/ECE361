@@ -29,6 +29,9 @@
 #define MAX_MEETINGS 100
 
 typedef enum {
+    REG,//register
+    REG_ACK,//ack for reg
+    REG_NAK,//nak for reg
     LOGIN,//Login with the server
     LO_ACK,//Acknowledge successful login
     LO_NAK,//Negative acknowledgement of login
@@ -38,6 +41,12 @@ typedef enum {
     JN_NAK,//Negative acknowledgement of joining the session
     LEAVE_SESS,//Leave a conference session
     NEW_SESS,//Create new conference session
+    NS_ASK,//ask if need password
+    NS_PWD,//password
+    NS_NO,//no need password
+    NS_YES,//need passwords
+    NS_ASK_ACK,//ack for yes and no
+    NS_PWD_ACK,//ack for password
     NS_ACK,//Acknowledge new conference session
     MESSAGE,//Send a message to the session or display the message if it is received
     QUERY,//Get a list of online users and available sessions
@@ -79,16 +88,6 @@ typedef struct clientData{
     SessionId* sessionList;
 }ClientData;
 
-/*
-application layer and transfer layer.
-1. input the port check input
-2. check if the port is available, if not show the list and ask to input again, while
-3. create or open a database.
-4. wait for the client check name and password, if not, sent logerr
-5. create a client list based on the session name including their id, ip, port.
-6. when somebody leave, delete it from the specific list, if no one in this list, delete the list.
-7. 
-*/
 
 void init(void); //init everything
 void loadData(ClientData* database, char* sourcePath);//load data from the source database
