@@ -164,6 +164,7 @@ bool joinSession(ClientData* database, int clientid, Session* session, int sessi
         return false;
     database[clientid].sessionList = (SessionId*)malloc(sizeof(SessionId));
     database[clientid].sessionList->id = sessionid;
+    database[clientid].sessionList->next = NULL;
     session[sessionid].users++;
     // if (session[sessionid].users == 0)
     // {
@@ -372,6 +373,8 @@ int main(int argc, char *argv[])
                     int sessionid = getSessionid(sessions, response.data);
                     printf("client %s:%d, session %s:%d\n",response.source, clientid, response.data, sessionid);
                     assert(clientid != -1);
+                    if (database[clientid].sessionList != NULL)
+                        goto already_join;
                     if (sessionid != -1 && joinSession(database, clientid, sessions, sessionid))
                     {
                         printf("Client %s joined %s \n", response.source, response.data);
@@ -380,12 +383,14 @@ int main(int argc, char *argv[])
                         msg.data[0] = ' ';
                         msg.source[0] = ' ';
                     }
-                    else{
-                        printf("Client %s failed to join %s \n", response.source, response.data);
+                    else{                     
                         msg.type = JN_NAK;
                         msg.size = 0;
                         msg.data[0] = ' ';
                         msg.source[0] = ' ';
+                        already_join:
+                        printf("Client %s failed to join %s \n", response.source, response.data);
+                        // sprintf(msg)
                     }
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
@@ -422,6 +427,18 @@ int main(int argc, char *argv[])
                 {
                     for (int i = 0; i < MAX_MEETINGS; ++i)
                     {
+                        if (strcmp(sessions[i].meetingName, response.data) == 0)
+                        {
+                            msg.type = NS_NAK;
+                            msg.size = 0;
+                            msg.data[0] = ' ';
+                            msg.source[0] = ' ';
+                            printf("Session %s create failed due to exist the same conference.\n", response.data);
+                            goto back;
+                        }
+                    }
+                    for (int i = 0; i < MAX_MEETINGS; ++i)
+                    {
                         if(sessions[i].meetingName[0] == '\0')
                         {
                             strcpy(sessions[i].meetingName, response.data);
@@ -438,6 +455,7 @@ int main(int argc, char *argv[])
                     msg.size = 0;
                     msg.data[0] = ' ';
                     msg.source[0] = ' ';
+                    back:
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back new session failed\n");

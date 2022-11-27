@@ -27,6 +27,8 @@
 #define MAX_USERS 100
 #define MAX_USERS_IN_A_MEETING 20
 #define MAX_MEETINGS 100
+#define MAX_PASSWORD_LENGTH 100
+
 
 typedef enum {
     REG,//register
@@ -48,6 +50,7 @@ typedef enum {
     NS_ASK_ACK,//ack for yes and no
     NS_PWD_ACK,//ack for password
     NS_ACK,//Acknowledge new conference session
+    NS_NAK,//error when create new conf
     MESSAGE,//Send a message to the session or display the message if it is received
     QUERY,//Get a list of online users and available sessions
     QU_ACK,//Reply followed by a list of users online
