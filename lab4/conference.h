@@ -78,6 +78,7 @@ typedef struct clientId{
 typedef struct session{
     unsigned char meetingName[MAX_MEETING_NAME];
     int users;
+    unsigned char password[MAX_PASSWORD_LENGTH];
     ClientId* clientList;
 }Session;
 

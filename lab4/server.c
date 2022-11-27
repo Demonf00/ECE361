@@ -62,6 +62,7 @@ void init(void)
     {
         sessions[i].clientList = NULL;
         sessions[i].meetingName[0] = '\0';
+        sessions[i].password[0] = '\0';
         sessions[i].users = 0;
     }
     return;
@@ -334,7 +335,53 @@ int main(int argc, char *argv[])
                 // printf("receive messgae from client!\n");
                 decode();
                 // printf("receive messgae from client!\n");
-                if(response.type == LOGIN)
+                if (response.type == REG)
+                {
+                    int full = 0;
+                    for (int i = 0; i < MAX_USERS; ++i)
+                    {
+                        if (strcmp(database[i].name, response.source) == 0)
+                        {
+                            msg.type = REG_NAK;
+                            msg.size = 0;
+                            msg.data[0] = ' ';
+                            msg.source[0] = ' ';
+                            break;
+                        }
+                        if (database[i].name[0] == '\0')
+                        {
+                            msg.type = REG_ACK;
+                            msg.size = 0;
+                            msg.data[0] = ' ';
+                            msg.source[0] = ' ';
+                            strcpy(database[i].name, response.source);
+                            strcpy(database[i].password, response.data);
+                            FILE* fp = fopen(databasePath, "a");
+                            if (fp == NULL)
+                            {
+                                perror("Unable to open the client database.\n");
+                                exit(1);
+                            }
+                            char chunk[128];
+                            sprintf(chunk, "\n%s %s", response.source, response.data);
+                            fputs(chunk, fp);
+                            fclose(fp);
+                            break;
+                        }
+                    }
+                    if (full == 0)
+                    {
+                        msg.type = REG_NAK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                    }
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back reg failed\n");
+                    printf("Ack sent\n");
+                }
+                else if(response.type == LOGIN)
                 {
                     // printf("login\n");
                     if (checkLog(database, response.source, response.data, 1, connfd))
