@@ -39,6 +39,8 @@ typedef enum {
     LO_NAK,//Negative acknowledgement of login
     EXIT,//Exit from the server
     JOIN,//Join a conference session
+    JN_ASK,//ask to enter password
+    JN_PWD, //password for join
     JN_ACK,//Acknowledge successful conference session join
     JN_NAK,//Negative acknowledgement of joining the session
     LEAVE_SESS,//Leave a conference session
