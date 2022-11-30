@@ -37,17 +37,41 @@ bool decode(){
 
 }
 
+bool connectSocket (char * addr, char* port){
+    // using default protocol->TCP
+    sock_desc = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_desc == -1){
+        printf("socket creation failed\n");
+        return false;
+    }
+
+    // clear server socket info
+    bzero(&servaddr, sizeof(servaddr));
+
+    // assign IP, PORT
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(addr);
+    servaddr.sin_port = htons(atoi(port));
+
+    // connect the client socket to server socket
+    if (connect(sock_desc, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0){
+        printf("connection with the server failed\n");
+        return false;
+    }
+    return true;
+}
+
 
 int main()
 {
-    bool recv_msg = false;
-    bool login = false;
+    bool recv_msg = false, login = false, if_connect = false,
+            in_session = false;
         
     while (true)
     {
         char input[2000], cmd[2000];
         char *command;
-        printf("$");
+        printf("$ ");
         fflush(stdout);
         
         struct timeval timeout;
@@ -80,15 +104,11 @@ int main()
             strcpy(cmd,input);
             command = strtok(cmd, " \n");
         }
+        if (strcmp(command, "/register") == 0){
+            printf("in register mode\n");
 
-        if (strcmp(command, "/login") == 0)
-        {
-            if(login){
-                printf("already login. logut to switch user.\n");
-            }
-            // /login <client ID> <password> <server-IP> <server-port>
-            printf("in login mode\n");
-
+            command  = strtok(NULL, " \n");
+            char * name, password;
             char *info[4];
             int i=0;
             command  = strtok(NULL, " \n");
@@ -100,40 +120,87 @@ int main()
                 printf("number of agument incorrect\n");
                 continue;
             }
-            char *name = info[0];
-            char *password=info[1]; 
-
-            // using default protocol->TCP
-            sock_desc = socket(AF_INET, SOCK_STREAM, 0);
-            if (sock_desc == -1){
-                printf("socket creation failed\n");
-                return -1;
+            
+            if_connect = connectSocket(info[2],info[3]);
+            if(if_connect){
+                msg.type = REG;
+                msg.size = strlen(info[1]);
+                strcpy(msg.source,info[0]);
+                strcpy(msg.data,info[1]);
             }
-
-            // clear server socket info
-            bzero(&servaddr, sizeof(servaddr));
-
-            // assign IP, PORT
-            servaddr.sin_family = AF_INET;
-            servaddr.sin_addr.s_addr = inet_addr(info[2]);
-            servaddr.sin_port = htons(atoi(info[3]));
-
-            // connect the client socket to server socket
-            if (connect(sock_desc, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0)
-            {
-                printf("connection with the server failed\n");
+            else{
+                printf("register not success\n");
                 continue;
             }
-           
-            
+
+            encode();
+            write(sock_desc, client_message, sizeof(client_message));
+            printf("register request sent\n");
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode()){
+                printf("register failed\n");
+                continue;
+            }
+            if(response.type!=REG_ACK){
+                printf("register failed\n\n");
+                continue;
+            }
+            setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
+            printf("registered:  %s  %s\n", info[0], info[1]);
+
+        }
+
+        else if (strcmp(command, "/login") == 0)
+        {
+            if(login){
+                printf("already login. logut to switch user.\n");
+                continue;
+            }
+            // /login <client ID> <password> <server-IP> <server-port>
+            printf("in login mode\n");
+
+            if(if_connect){
+                char *info[2];
+                int i=0;
+                command  = strtok(NULL, " \n");
+                while(command != NULL && i<2){
+                    info[i++]=command;
+                    command  = strtok(NULL, " \n");
+                }
+                if(i<2||command != NULL){
+                    printf("number of agument incorrect\n");
+                    continue;
+                }  
+                msg.size = strlen(info[1]);
+                strcpy(msg.source,info[0]);
+                strcpy(msg.data,info[1]);
+            }
+            else{
+                printf("hhh\n");
+                char *info[4];
+                int i=0;
+                command  = strtok(NULL, " \n");
+                while(command != NULL && i<4){
+                    info[i++]=command;
+                    command  = strtok(NULL, " \n");
+                }
+                if(i<4||command != NULL){
+                    printf("number of agument incorrect\n");
+                    continue;
+                }   
+                if(!connectSocket(info[2],info[3])){
+                    printf("login not success\n");
+                }       
+                msg.size = strlen(info[1]);
+                strcpy(msg.source,info[0]);
+                strcpy(msg.data,info[1]);
+            }
             msg.type = LOGIN;
-            msg.size = strlen(info[1]);
-            strcpy(msg.source,info[0]);
-            strcpy(msg.data,info[1]);
+            
 
 
             encode();
-            int xx = write(sock_desc, client_message, sizeof(client_message));
+            write(sock_desc, client_message, sizeof(client_message));
             printf("longin request sent\n");
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode()){
@@ -182,8 +249,13 @@ int main()
             // continue;
         }
         else if (strcmp(command, "/joinsession") == 0){
-            
             printf("in joinsession mode\n");
+
+            if(in_session){
+                printf("already in session. leave first\n");
+                continue;
+            }
+
             command  = strtok(NULL, " \n");
             char *session_id = command;
 
@@ -200,6 +272,25 @@ int main()
 
             if(!decode())
                 continue;
+            if(response.type==JN_ASK){
+                char usr_input[20];
+                char * pwd;
+                printf("enter password for session %s: ",command);
+                fgets(usr_input,20,stdin);
+                pwd =  strtok(usr_input," \n");
+                
+                bzero(msg.data,MAX_DATA);
+                msg.type = JN_PWD;
+                msg.size = strlen(pwd);
+                strcpy(msg.data,pwd);
+
+                encode();
+                write(sock_desc, client_message, sizeof(client_message));
+                read(sock_desc, server_message, sizeof(server_message));
+                if(!decode())
+                    continue;
+
+            }
             if(response.type!=JN_ACK){
                     printf("join not success\n");
                     // if(response.type==JN_NAK)
@@ -214,6 +305,11 @@ int main()
         else if (strcmp(command, "/leavesession") == 0){
             // leave current session
             printf("in leavesession mode\n");
+
+            if(!in_session){
+                printf("not in session yet\n");
+                continue;
+            }
 
             bzero(msg.data,MAX_DATA);
             msg.type = LEAVE_SESS;
@@ -238,15 +334,56 @@ int main()
             write(sock_desc, client_message, sizeof(client_message));
             
             read(sock_desc, server_message, sizeof(server_message));
-            if(!decode())
+            if(!decode()||response.type!=NS_ASK){
+                printf("create not success\n");
                 continue;
+            }
+            bool need_pwd;
+                
+            while(1){
+                char usr_input[20];
+                char * if_pwd;
+                printf("need password for session (y/n): ");
+                fgets(usr_input,20,stdin);
+                if_pwd =  strtok(usr_input," \n");
+                if(strcmp(if_pwd,"y")==0){
+                    need_pwd = true;
+                    break;
+                }
+                if(strcmp(if_pwd,"n")==0){
+                    need_pwd = false;
+                    break;
+                }
+                printf("wrong choice entered\n");
+            }
+            if(need_pwd){
+                char pwd[20];
+                char * new_pwd;
+                printf("enter password for session: ");
+                fgets(pwd,20,stdin);
+                new_pwd =  strtok(pwd," \n");
 
-            if(response.type!=NS_ACK)
-                printf("create not success\n");  
+                bzero(msg.data,MAX_DATA);
+                msg.type = NS_PWD;
+                msg.size = strlen(new_pwd);
+                strcpy(msg.data,new_pwd);
+            }
+            else{
+                bzero(msg.data,MAX_DATA);
+                msg.type = NS_NO;
+                msg.size = 0;
+            }
+
+            encode();
+            write(sock_desc, client_message, sizeof(client_message));
+            
+            read(sock_desc, server_message, sizeof(server_message));
+            if(!decode()||response.type!=NS_ACK){
+                printf("create not success\n");
+                continue;
+            }
             else
                 printf("created session %s\n", command);
-            
-
         }
         else if (strcmp(command, "/list") == 0){
             printf("in list mode\n");
