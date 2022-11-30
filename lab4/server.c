@@ -11,6 +11,7 @@ int connfd;
 int user_numbers = 0;
 struct sockaddr_in servaddr, cliaddr;
 struct message msg, response;
+int tempSessionId = -1;
 pid_t childpid;
 char server_message[5000], client_message[5000];
 
@@ -422,22 +423,62 @@ int main(int argc, char *argv[])
                     assert(clientid != -1);
                     if (database[clientid].sessionList != NULL)
                         goto already_join;
-                    if (sessionid != -1 && joinSession(database, clientid, sessions, sessionid))
+                    
+                    if (sessionid == -1){
+                        already_join:                     
+                        msg.type = JN_NAK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                        printf("Client %s failed to join %s \n", response.source, response.data);
+                        // sprintf(msg)
+                    }
+                    else if(sessions[sessionid].password[0] == '\0')
                     {
+                        if (!joinSession(database, clientid, sessions, sessionid))
+                            goto already_join;
                         printf("Client %s joined %s \n", response.source, response.data);
                         msg.type = JN_ACK;
                         msg.size = 0;
                         msg.data[0] = ' ';
                         msg.source[0] = ' ';
                     }
-                    else{                     
+                    else{
+                        msg.type = JN_ASK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                        tempSessionId = sessionid;
+                        printf("Ask client %s for password to join session %s\n", response.source, response.data);
+                    }
+
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back join failed\n");
+                    printf("Ack sent\n");
+                }
+                else if(response.type == JN_PWD)
+                {
+                    if (tempSessionId == -1) goto join_error;
+                    int clientid = getClientid(database, response.source);
+                    if (strcmp(sessions[tempSessionId].password, response.data) == 0)
+                    {
+                        msg.type = JN_ACK;
+                        msg.size = 0;
+                        msg.data[0] = ' ';
+                        msg.source[0] = ' ';
+                        printf("Client %s joined %s \n", response.source, sessions[tempSessionId].meetingName);
+                        if (!joinSession(database, clientid, sessions, tempSessionId)) goto join_error;
+                        tempSessionId == -1;
+                    }
+                    else
+                    {
+                        join_error:
                         msg.type = JN_NAK;
                         msg.size = 0;
                         msg.data[0] = ' ';
                         msg.source[0] = ' ';
-                        already_join:
-                        printf("Client %s failed to join %s \n", response.source, response.data);
-                        // sprintf(msg)
+                        printf("Client %s failed to join the meeting \n", response.source); 
                     }
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
@@ -488,6 +529,7 @@ int main(int argc, char *argv[])
                     {
                         if(sessions[i].meetingName[0] == '\0')
                         {
+                            tempSessionId = i;
                             strcpy(sessions[i].meetingName, response.data);
                             break;
                         }
@@ -498,7 +540,8 @@ int main(int argc, char *argv[])
                         if (sessions[i].meetingName[0] != '\0')
                             printf("%s\n", sessions[i].meetingName);
                     }
-                    msg.type = NS_ACK;
+                    
+                    msg.type = NS_ASK;
                     msg.size = 0;
                     msg.data[0] = ' ';
                     msg.source[0] = ' ';
@@ -507,6 +550,34 @@ int main(int argc, char *argv[])
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back new session failed\n");
                     printf("Server: session %s created\n", response.data);
+                }
+                else if(response.type == NS_PWD)
+                {
+                    msg.type = NS_ACK;
+                    if (tempSessionId == -1)
+                        msg.type = NS_NAK;
+                    strcpy(sessions[tempSessionId].password, response.data);
+                    tempSessionId = -1;
+                    msg.size = 0;
+                    msg.data[0] = ' ';
+                    msg.source[0] = ' ';
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back new session failed\n");
+                    printf("Server: session %s password set\n", response.data);
+                }
+                else if(response.type == NS_NO)
+                {
+                    msg.type = NS_ACK;
+                    if (tempSessionId == -1)
+                        msg.type = NS_NAK;
+                    msg.size = 0;
+                    msg.data[0] = ' ';
+                    msg.source[0] = ' ';
+                    encode();
+                    while (write(connfd, server_message, sizeof(server_message)) <= 0)
+                        printf("Server: sent back new session failed\n");
+                    printf("Server: session %s password set\n", response.data);
                 }
                 else if(response.type == MESSAGE)
                 {
