@@ -356,6 +356,7 @@ int main(int argc, char *argv[])
                         printf("login\n");
                         *newUserid = getClientid(database, response.source);
                         dup2(connfd, userfds[*newUserid]);
+                        printf("from %d to %d\n", connfd, *newUserid);
                         msg.type = LO_ACK;
                         msg.size = 0;
                         msg.data[0] = ' ';
