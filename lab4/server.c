@@ -272,6 +272,10 @@ int main(int argc, char *argv[])
     }
     memset(&servaddr, 0, sizeof(servaddr)); 
     memset(&cliaddr, 0, sizeof(cliaddr));
+    struct timeval timeout;
+        
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000;
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(port);
@@ -303,9 +307,7 @@ int main(int argc, char *argv[])
         if ((childpid = fork()) == 0)
         {
             close(sockfd);
-            struct timeval timeout;
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 1000;
+            // setsockopt (connfd, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
             int count = 0;
             while(true)
             {
@@ -585,7 +587,7 @@ int main(int argc, char *argv[])
                 {
                     int clientid = getClientid(database, response.source);
                     memcpy((struct message*)&msg, (struct message*)&response, sizeof(struct message));
-                    printf("Server: client %s, %d wanna sent message\n", response.source, clientid);
+                    printf("Server: client %s, %d wanna sent message from session %s\n", response.source, clientid, sessions[database[clientid].sessionList->id].meetingName);
                     if (database[clientid].sessionList == NULL)
                     {
                         printf("Server: client %s not in a session\n", response.source);
@@ -611,14 +613,21 @@ int main(int argc, char *argv[])
                     // }
                     int sessionid = database[clientid].sessionList->id;
                     encode();
-                    printf("Server: sent %s\n", server_message);
+                    printf("Server: sent %s to session id %d\n", server_message, sessionid);
                     for (int i = 0; i < MAX_USERS; ++i)
                     {
                         if (database[i].sessionList != NULL && database[i].sessionList->id == sessionid)
                         {
                             printf("Server: sent message to %s:%d\n", database[i].name, i);
-                            while(write(database[i].fd, server_message, sizeof(server_message))<=0);
-                            printf("Server: Sent message to %s success!\n", database[i].name);
+                            int fail = 0;
+                            int ew;
+                            while((ew = write(database[i].fd, server_message, sizeof(server_message)))<=0 && fail <20) 
+                            {   
+                                printf("%d\n", ew);
+                                fail++;
+                            }
+                            if (fail < 20) printf("Server: Sent message to %s success!\n", database[i].name);
+                            else printf("Server: Sent message to %s failed!\n", database[i].name);
                         }
                     }
                 }
