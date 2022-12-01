@@ -104,60 +104,25 @@ int main()
             strcpy(cmd,input);
             command = strtok(cmd, " \n");
         }
-        if (strcmp(command, "/register") == 0){
-            printf("in register mode\n");
-
-            command  = strtok(NULL, " \n");
-            char * name, password;
-            char *info[4];
-            int i=0;
-            command  = strtok(NULL, " \n");
-            while(command != NULL && i<4){
-                info[i++]=command;
-                command  = strtok(NULL, " \n");
-            }
-            if(i<4||command != NULL){
-                printf("number of agument incorrect\n");
-                continue;
-            }
-            
-            if_connect = connectSocket(info[2],info[3]);
-            if(if_connect){
-                msg.type = REG;
-                msg.size = strlen(info[1]);
-                strcpy(msg.source,info[0]);
-                strcpy(msg.data,info[1]);
+        if (strcmp(command, "/login") == 0 ||strcmp(command, "/register") == 0)
+        {
+            char * operation;
+            if(strcmp(command, "/login") == 0){
+                msg.type = LOGIN;
+                operation = "login";
+                
+                if(login){
+                    printf("already login. logut to switch user.\n");
+                    continue;
+                }
             }
             else{
-                printf("register not success\n");
-                continue;
-            }
+                msg.type = REG;
+                operation = "register";
 
-            encode();
-            write(sock_desc, client_message, sizeof(client_message));
-            printf("register request sent\n");
-            read(sock_desc, server_message, sizeof(server_message));
-            if(!decode()){
-                printf("register failed\n");
-                continue;
             }
-            if(response.type!=REG_ACK){
-                printf("register failed\n\n");
-                continue;
-            }
-            setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
-            printf("registered:  %s  %s\n", info[0], info[1]);
-
-        }
-
-        else if (strcmp(command, "/login") == 0)
-        {
-            if(login){
-                printf("already login. logut to switch user.\n");
-                continue;
-            }
+            printf("in %s mode\n", operation);
             // /login <client ID> <password> <server-IP> <server-port>
-            printf("in login mode\n");
 
             if(if_connect){
                 char *info[2];
@@ -167,7 +132,7 @@ int main()
                     info[i++]=command;
                     command  = strtok(NULL, " \n");
                 }
-                if(i<2||command != NULL){
+                if(i<2/*||command != NULL*/){
                     printf("number of agument incorrect\n");
                     continue;
                 }  
@@ -176,7 +141,6 @@ int main()
                 strcpy(msg.data,info[1]);
             }
             else{
-                printf("hhh\n");
                 char *info[4];
                 int i=0;
                 command  = strtok(NULL, " \n");
@@ -184,38 +148,40 @@ int main()
                     info[i++]=command;
                     command  = strtok(NULL, " \n");
                 }
-                if(i<4||command != NULL){
+                if(i<4/*||command != NULL*/){
                     printf("number of agument incorrect\n");
                     continue;
-                }   
-                if(!connectSocket(info[2],info[3])){
-                    printf("login not success\n");
+                }
+
+                if_connect = connectSocket(info[2],info[3]);   
+                if(!if_connect){
+                    printf("%s not success\n", operation);
+                    continue;
                 }       
                 msg.size = strlen(info[1]);
                 strcpy(msg.source,info[0]);
                 strcpy(msg.data,info[1]);
             }
-            msg.type = LOGIN;
             
-
-
             encode();
             write(sock_desc, client_message, sizeof(client_message));
-            printf("longin request sent\n");
+            printf("%s request sent\n", operation);
             read(sock_desc, server_message, sizeof(server_message));
             if(!decode()){
-                printf("login not success\n");
+                printf("%s not success\n", operation);
                 continue;
             }
-            if(response.type!=LO_ACK){
-                    printf("login not success\n");
+            if((strcmp(operation, "login") == 0 && response.type!=LO_ACK) || 
+                (strcmp(operation, "register") == 0 && response.type!=REG_ACK)){
+                    printf("%s not success\n", operation);
                     // if(response.type==LO_NAK)
                     //     printf("%s\n", response.data);
                     continue;
             }
             setsockopt (sock_desc, SOL_SOCKET, SO_RCVTIMEO, &timeout,sizeof timeout);
-            printf("login success\n");
-            login = true;  
+            printf("%s success\n",operation);
+            if(response.type==LO_ACK)
+                login = true;  
         }
         else if (strcmp(command, "/quit") == 0){
             // Terminate the program
@@ -299,6 +265,7 @@ int main()
             }
             printf("joined session %s\n", command);
             recv_msg = true; 
+            in_session = true;
                          
             
         }
@@ -319,6 +286,7 @@ int main()
             write(sock_desc, client_message, sizeof(client_message));
             printf("leaved session\n");
             recv_msg = false;
+            in_session = false;
 
         }
         else if (strcmp(command, "/createsession") == 0){
