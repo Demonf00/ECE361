@@ -347,6 +347,7 @@ int main(int argc, char *argv[])
                             msg.size = 0;
                             msg.data[0] = ' ';
                             msg.source[0] = ' ';
+                            full = 1;
                             break;
                         }
                         if (database[i].name[0] == '\0')
@@ -367,6 +368,7 @@ int main(int argc, char *argv[])
                             sprintf(chunk, "\n%s %s", response.source, response.data);
                             fputs(chunk, fp);
                             fclose(fp);
+                            full = 1;
                             break;
                         }
                     }
@@ -581,9 +583,7 @@ int main(int argc, char *argv[])
                 }
                 else if(response.type == MESSAGE)
                 {
-                    // memcpy(server_message,client_message,sizeof(client_message));
                     int clientid = getClientid(database, response.source);
-                    
                     memcpy((struct message*)&msg, (struct message*)&response, sizeof(struct message));
                     printf("Server: client %s, %d wanna sent message\n", response.source, clientid);
                     if (database[clientid].sessionList == NULL)
