@@ -623,7 +623,7 @@ int main(int argc, char *argv[])
                             int ew;
                             while((ew = write(database[i].fd, server_message, sizeof(server_message)))<=0 && fail <20) 
                             {   
-                                printf("%d\n", ew);
+                                // printf("%d\n", ew);
                                 fail++;
                             }
                             if (fail < 20) printf("Server: Sent message to %s success!\n", database[i].name);
