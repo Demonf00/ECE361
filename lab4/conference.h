@@ -1,9 +1,12 @@
 #include <string.h>
+#include <errno.h>
 #include <sys/types.h>
+#include <sys/syscall.h>      /* Definition of SYS_* constants */
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+
 #include <dirent.h>
 #include <stdio.h> 
 #include <stdlib.h> 
@@ -90,6 +93,7 @@ typedef struct clientData{
     in_addr_t address;
     int port;
     int fd;
+    int ppid;
     int status;//0 for not log in, 1 for log in
     int sesid;
 }ClientData;

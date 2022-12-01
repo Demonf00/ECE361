@@ -3,6 +3,8 @@
 
 Session* sessions;
 ClientData* database;
+int* userfds;
+int* newUserid;
 char buffer[BUFSIZ];
 int numSessions = 0;
 char* databasePath = "./clientData";
@@ -201,6 +203,10 @@ int main(int argc, char *argv[])
                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     database = mmap(NULL, sizeof(ClientData)*MAX_USERS, PROT_READ | PROT_WRITE, 
                     MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    userfds = mmap(NULL, sizeof(int)*MAX_USERS, PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    newUserid = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     //need to check if the port is possible here.
     init();
     loadData(database, databasePath);  
@@ -212,7 +218,8 @@ int main(int argc, char *argv[])
     memset(&servaddr, 0, sizeof(servaddr)); 
     memset(&cliaddr, 0, sizeof(cliaddr));
     struct timeval timeout;
-        
+    
+    *newUserid = -1;
     timeout.tv_sec = 0;
     timeout.tv_usec = 1000;
     servaddr.sin_family = AF_INET;
@@ -279,8 +286,20 @@ int main(int argc, char *argv[])
                 // printf("receive messgae from client!\n");
                 printf("Current stat:\n");
                 for (int i = 0; i < MAX_USERS; ++i)
-                    if (database[i].sesid != -1)
-                        printf("Id: %d, name: %s, session: %d\n", i, database[i].name, database[i].sesid);
+                    if (database[i].status == 1)
+                        printf("Id: %d, name: %s, connfd: %d\n", i, database[i].name, database[i].fd);
+                if (*newUserid != -1)
+                {
+                    // printf("S");
+                    for (int i = 0; i < MAX_USERS; ++i)
+                    {
+                        if (database[i].status == 0) continue;
+                        if (i == *newUserid) continue;
+                        dup2(userfds[*newUserid], database[*newUserid].fd);
+                        printf("%d to %d \n", userfds[*newUserid], database[*newUserid].fd);
+                    }
+                    *newUserid = -1;
+                }
                 if (response.type == REG)
                 {
                     int full = 0;
@@ -335,6 +354,8 @@ int main(int argc, char *argv[])
                     if (checkLog(database, response.source, response.data, 1, connfd))
                     {
                         printf("login\n");
+                        *newUserid = getClientid(database, response.source);
+                        dup2(connfd, userfds[*newUserid]);
                         msg.type = LO_ACK;
                         msg.size = 0;
                         msg.data[0] = ' ';
@@ -550,12 +571,16 @@ int main(int argc, char *argv[])
                     {
                         if (database[i].sesid == sessionid)
                         {
-                            printf("Server: sent message to %s:%d\n", database[i].name, database[i].sesid);
+                            printf("Server: sent message to %s:%d, connfd:%d\n", database[i].name, database[i].sesid, database[i].fd);
                             int fail = 0;
                             int ew;
                             while((ew = write(database[i].fd, server_message, sizeof(server_message)))<=0 && fail <20) fail++;
                             if (fail < 20) printf("Server: Sent message to %s success!\n", database[i].name);
-                            else printf("Server: Sent message to %s failed!\n", database[i].name);
+                            else 
+                            {
+                                printf("Error: %s\n", strerror(errno));
+                                printf("Server: Sent message to %s failed!\n", database[i].name);
+                            }
                         }
                     }
                 }
