@@ -211,6 +211,16 @@ int main()
         else if (strcmp(command, "/logout") == 0){
             //reset client
             printf("logout now\n");
+            if(in_session){
+                bzero(msg.data,MAX_DATA);
+                msg.type = LEAVE_SESS;
+                msg.size = 0;
+
+                encode();
+                write(sock_desc, client_message, sizeof(client_message));
+                recv_msg = false;
+                in_session = false;
+            }
 
             bzero(msg.data,MAX_DATA);
             msg.type = EXIT;
