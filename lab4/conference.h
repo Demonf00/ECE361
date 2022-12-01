@@ -91,7 +91,7 @@ typedef struct clientData{
     int port;
     int fd;
     int status;//0 for not log in, 1 for log in
-    SessionId* sessionList;
+    int sesid;
 }ClientData;
 
 

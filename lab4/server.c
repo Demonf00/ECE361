@@ -56,7 +56,7 @@ void init(void)
         database[i].status = 0;
         database[i].name[0] = '\0';
         database[i].password[0] = '\0';
-        database[i].sessionList = NULL;
+        database[i].sesid = -1;
     }
 
     for (int i = 0; i < MAX_MEETINGS; ++i)
@@ -162,35 +162,10 @@ bool joinSession(ClientData* database, int clientid, Session* session, int sessi
 {
     if (session[sessionid].users == MAX_USERS_IN_A_MEETING)
         return false;
-    if (database[clientid].sessionList != NULL && database[clientid].sessionList->id == sessionid)
+    if (database[clientid].sesid != -1)
         return false;
-    database[clientid].sessionList = (SessionId*)malloc(sizeof(SessionId));
-    database[clientid].sessionList->id = sessionid;
-    database[clientid].sessionList->next = NULL;
+    database[clientid].sesid = sessionid;
     session[sessionid].users++;
-    // if (session[sessionid].users == 0)
-    // {
-    //     session[sessionid].clientList = (ClientId*)malloc(sizeof(ClientId));
-    //     session[sessionid].clientList->next = NULL;
-    //     session[sessionid].clientList->id = clientid;
-    //     database[clientid].sessionList = (SessionId*)malloc(sizeof(SessionId));
-    //     database[clientid].sessionList->id = sessionid;
-    //     database[clientid].sessionList->next = NULL;
-    //     session[sessionid].users++;
-    // }
-    // else{
-    //     ClientId* newclient = (ClientId*)malloc(sizeof(ClientId));
-    //     newclient->id = clientid;
-    //     printf("%d %d\n", clientid, session[sessionid].clientList->id);
-    //     newclient->next = session[sessionid].clientList;
-    //     session[sessionid].clientList = newclient;
-    //     printf("%d %d\n", session[sessionid].clientList->id,session[sessionid].clientList->next->id );
-    //     SessionId* newsession = (SessionId*)malloc(sizeof(SessionId));
-    //     newsession->id = sessionid;
-    //     newsession->next = NULL;
-    //     database[clientid].sessionList = newsession;
-    //     session[sessionid].users++;
-    // }
     return true;
 }
 
@@ -199,48 +174,12 @@ bool quitSession(ClientData* database, int clientid, Session* session, int sessi
 {
     if (session[sessionid].users == 0)
         return false;
-    free(database[clientid].sessionList);
-    database[clientid].sessionList = NULL;
+    database[clientid].sesid = -1;
     session[sessionid].users--;
     if (session[sessionid].users == 0)
     {
         session[sessionid].meetingName[0] = '\0';
     }
-    // if (session[sessionid].users == 1)
-    // {
-    //     session[sessionid].users--;
-    //     free(session[sessionid].clientList);
-    //     session[sessionid].clientList = NULL;
-    //     free(database[clientid].sessionList);
-    //     database[clientid].sessionList = NULL;
-    //     session[sessionid].meetingName[0] = '\0';
-    // }
-    // else{
-    //     ClientId* current = session[sessionid].clientList;
-    //     ClientId* previous = NULL;
-    //     while(current != NULL && current->id != clientid)
-    //     {
-    //         previous = current;
-    //         current = current->next;
-    //     }
-    //     if (current == NULL)
-    //         return false;
-    //     else if (current == session[sessionid].clientList)
-    //     {
-    //         session[sessionid].clientList = current->next;
-    //         free(current);
-    //         session[sessionid].users--;
-    //         free(database[clientid].sessionList);
-    //         database[clientid].sessionList = NULL;
-    //     }
-    //     else{
-    //         previous->next = current->next;
-    //         free(current);
-    //         session[sessionid].users--;
-    //         free(database[clientid].sessionList);
-    //         database[clientid].sessionList = NULL;
-    //     }
-    // }
     return true;
 }
 
@@ -324,7 +263,7 @@ int main(int argc, char *argv[])
                             if (database[i].fd == connfd)
                             {
                                 database[i].status = 0;//log out
-                                quitSession(database, i, sessions, database[i].sessionList->id);
+                                quitSession(database, i, sessions, database[i].sesid);
                                 printf("Server: Disconnected client %s:%d\n", database[i].name, i);
                             }
                         }
@@ -338,6 +277,10 @@ int main(int argc, char *argv[])
                 // printf("receive messgae from client!\n");
                 decode();
                 // printf("receive messgae from client!\n");
+                printf("Current stat:\n");
+                for (int i = 0; i < MAX_USERS; ++i)
+                    if (database[i].sesid != -1)
+                        printf("Id: %d, name: %s, session: %d\n", i, database[i].name, database[i].sesid);
                 if (response.type == REG)
                 {
                     int full = 0;
@@ -425,7 +368,7 @@ int main(int argc, char *argv[])
                     int sessionid = getSessionid(sessions, response.data);
                     printf("client %s:%d, session %s:%d\n",response.source, clientid, response.data, sessionid);
                     assert(clientid != -1);
-                    if (database[clientid].sessionList != NULL)
+                    if (database[clientid].sesid != -1)
                         goto already_join;
                     
                     if (sessionid == -1){
@@ -492,7 +435,7 @@ int main(int argc, char *argv[])
                 else if(response.type == LEAVE_SESS)
                 {
                     int clientid = getClientid(database, response.source);
-                    int sessionid = database[clientid].sessionList->id;
+                    int sessionid = database[clientid].sesid;
                     assert(clientid != -1);
                     if (sessionid != -1 && quitSession(database, clientid, sessions, sessionid))
                     {
@@ -568,7 +511,7 @@ int main(int argc, char *argv[])
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back new session failed\n");
-                    printf("Server: session %s password set\n", response.data);
+                    printf("Server: session %s password set\n", sessions[tempSessionId].meetingName);
                 }
                 else if(response.type == NS_NO)
                 {
@@ -581,14 +524,14 @@ int main(int argc, char *argv[])
                     encode();
                     while (write(connfd, server_message, sizeof(server_message)) <= 0)
                         printf("Server: sent back new session failed\n");
-                    printf("Server: session %s password set\n", response.data);
+                    printf("Server: session %s password set\n", sessions[tempSessionId].meetingName);
                 }
                 else if(response.type == MESSAGE)
                 {
                     int clientid = getClientid(database, response.source);
                     memcpy((struct message*)&msg, (struct message*)&response, sizeof(struct message));
-                    printf("Server: client %s, %d wanna sent message from session %s\n", response.source, clientid, sessions[database[clientid].sessionList->id].meetingName);
-                    if (database[clientid].sessionList == NULL)
+                    printf("Server: client %s, %d wanna sent message from session %s\n", response.source, clientid, sessions[database[clientid].sesid].meetingName);
+                    if (database[clientid].sesid == -1)
                     {
                         printf("Server: client %s not in a session\n", response.source);
                         msg.type = ERROR;
@@ -600,32 +543,17 @@ int main(int argc, char *argv[])
                             printf("Server: sent back message failed\n");
                         continue;
                     }
-                    // int sessionid = database[clientid].sessionList->id;
-                    // ClientId* current = sessions[sessionid].clientList;
-                    // while(current != NULL)
-                    // {
-                    //     printf("%d %s\n", current->id, database[current->id].name);
-                    //     while (write(database[current->id].fd,server_message, sizeof(server_message))<=0)
-                    //         printf("Server: Sent message to %s failed\n", database[current->id].name);
-                    //     if (current->next != current)
-                    //         current = current->next;
-                    //     else break;
-                    // }
-                    int sessionid = database[clientid].sessionList->id;
+                    int sessionid = database[clientid].sesid;
                     encode();
                     printf("Server: sent %s to session id %d\n", server_message, sessionid);
                     for (int i = 0; i < MAX_USERS; ++i)
                     {
-                        if (database[i].sessionList != NULL && database[i].sessionList->id == sessionid)
+                        if (database[i].sesid == sessionid)
                         {
-                            printf("Server: sent message to %s:%d\n", database[i].name, i);
+                            printf("Server: sent message to %s:%d\n", database[i].name, database[i].sesid);
                             int fail = 0;
                             int ew;
-                            while((ew = write(database[i].fd, server_message, sizeof(server_message)))<=0 && fail <20) 
-                            {   
-                                // printf("%d\n", ew);
-                                fail++;
-                            }
+                            while((ew = write(database[i].fd, server_message, sizeof(server_message)))<=0 && fail <20) fail++;
                             if (fail < 20) printf("Server: Sent message to %s success!\n", database[i].name);
                             else printf("Server: Sent message to %s failed!\n", database[i].name);
                         }
